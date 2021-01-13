@@ -11,7 +11,7 @@
     
     
     
-    <script type="application/ld+json">{"@context":"http://schema.org","@type":"Website","@id":"https://sonniday.github.io","author":{"@type":"Person","name":"Soeun Shim","sameAs":["https://github.com/","http://stackoverflow.com/users","https://twitter.com/","https://facebook.com/","https://plus.google.com/","https://www.linkedin.com/profile/","mailto"]},"name":"Everyday Sonni Day :)","description":"","url":"https://sonniday.github.io"}</script>
+    <script type="application/ld+json">{"@context":"http://schema.org","@type":"Website","@id":"https://sonniday.github.io","author":{"@type":"Person","name":"Soeun Shim","sameAs":["https://github.com/","http://stackoverflow.com/users","https://twitter.com/","https://facebook.com/","https://plus.google.com/","https://www.linkedin.com/profile/","mailto"],"image":"soeun_profile.jpeg"},"name":"Everyday Sonni Day :)","description":"","url":"https://sonniday.github.io"}</script>
     <meta property="og:type" content="blog">
 <meta property="og:title" content="Everyday Sonni Day :)">
 <meta property="og:url" content="https://sonniday.github.io/index.html">
@@ -24,12 +24,23 @@
         
     
     
+        <meta property="og:image" content="https://sonniday.github.io/assets/images/soeun_profile.jpeg"/>
+    
     
     
     
     <!--STYLES-->
     
-<link rel="stylesheet" href="/assets/css/style-ngsdqla4mpe0ssvogcqc9dtb6acrkpttnvvyippydwfzcbvoasrcdcgdm2r4.min.css">
+<link rel="stylesheet" href="/assets/css/all.css">
+
+    
+<link rel="stylesheet" href="/assets/css/jquery.fancybox.css">
+
+    
+<link rel="stylesheet" href="/assets/css/thumbs.css">
+
+    
+<link rel="stylesheet" href="/assets/css/tranquilpeak.css">
 
     <!--STYLES END-->
     
@@ -44,6 +55,10 @@
             <!-- Define author's picture -->
 
 
+    
+        
+            
+        
     
 
 <header id="header" data-behavior="1">
@@ -66,6 +81,8 @@
             >
         
         
+            <img class="header-picture" src="/assets/images/soeun_profile.jpeg" alt="Author&#39;s picture"/>
+        
         </a>
     
 </header>
@@ -73,8 +90,26 @@
             <!-- Define author's picture -->
 
 
+
+        
+    
+
 <nav id="sidebar" data-behavior="1">
     <div class="sidebar-container">
+        
+            <div class="sidebar-profile">
+                <a
+                    href="/#about"
+                    aria-label="Read more about the author"
+                >
+                    <img class="sidebar-profile-picture" src="/assets/images/soeun_profile.jpeg" alt="Author&#39;s picture"/>
+                </a>
+                <h4 class="sidebar-profile-name">Soeun Shim</h4>
+                
+                    <h5 class="sidebar-profile-bio"><p>My Tech Diary</p>
+</h5>
+                
+            </div>
         
         
             <ul class="sidebar-buttons">
@@ -441,25 +476,37 @@
         
 
 
+    
+        
+    
+
 <div id="about">
     <div id="about-card">
         <div id="about-btn-close">
             <i class="fa fa-times"></i>
         </div>
         
+            <img id="about-card-picture" src="/assets/images/soeun_profile.jpeg" alt="Author&#39;s picture"/>
+        
             <h4 id="about-card-name">Soeun Shim</h4>
         
-            <div id="about-card-bio"><p>author.bio</p>
+            <div id="about-card-bio"><p>My Tech Diary</p>
 </div>
         
         
             <div id="about-card-job">
                 <i class="fa fa-briefcase"></i>
                 <br/>
-                <p>author.job</p>
+                <p>Software Engineer</p>
 
             </div>
         
+        
+            <div id="about-card-location">
+                <i class="fa fa-map-marker-alt"></i>
+                <br/>
+                South Korea / Seoul
+            </div>
         
     </div>
 </div>
@@ -469,7 +516,16 @@
 <div id="cover" style="background-image:url('/assets/images/cover.jpg');"></div>
         <!--SCRIPTS-->
 
-<script src="/assets/js/script-ddcd9fwdlueogftdfmavifxnlzl2ynzksnsns9abxmpjpssc2hx11rgm01da.min.js"></script>
+<script src="/assets/js/jquery.js"></script>
+
+
+<script src="/assets/js/jquery.fancybox.js"></script>
+
+
+<script src="/assets/js/thumbs.js"></script>
+
+
+<script src="/assets/js/tranquilpeak.js"></script>
 
 <!--SCRIPTS END-->
 
