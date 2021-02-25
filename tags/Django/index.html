@@ -6,7 +6,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="generator" content="Everyday Sonni Day :)">
-    <title>Tag: 테스트 태그 - Everyday Sonni Day :)</title>
+    <title>Tag: Django - Everyday Sonni Day :)</title>
     <meta name="author" content="Soeun Shim">
     
     
@@ -14,7 +14,7 @@
     <script type="application/ld+json">{}</script>
     <meta property="og:type" content="blog">
 <meta property="og:title" content="Everyday Sonni Day :)">
-<meta property="og:url" content="https://sonniday.github.io/tags/%ED%85%8C%EC%8A%A4%ED%8A%B8-%ED%83%9C%EA%B7%B8/index.html">
+<meta property="og:url" content="https://sonniday.github.io/tags/Django/index.html">
 <meta property="og:site_name" content="Everyday Sonni Day :)">
 <meta property="og:locale" content="en_US">
 <meta property="article:author" content="Soeun Shim">
@@ -224,23 +224,23 @@
                     
                         <a
                             class="link-unstyled"
-                            href="/2021/01/13/%ED%8F%AC%EC%8A%A4%ED%8C%85-%ED%85%8C%EC%8A%A4%ED%8A%B8/"
-                            aria-label=": 포스팅 테스트"
+                            href="/2021/02/25/210225-1/"
+                            aria-label=": [Django] values()와 values_list()"
                         >
-                            포스팅 테스트
+                            [Django] values()와 values_list()
                         </a>
                     
                 </h1>
                 <div class="postShorten-meta">
-    <time datetime="2021-01-13T19:04:55+09:00">
+    <time datetime="2021-02-25T14:46:41+09:00">
 	
-		    Jan 13, 2021
+		    Feb 25, 2021
     	
     </time>
     
         <span>in </span>
         
-    <a class="category-link" href="/categories/%ED%85%8C%EC%8A%A4%ED%8A%B8-%EC%B9%B4%ED%85%8C%EA%B3%A0%EB%A6%AC/">테스트 카테고리</a>
+    <a class="category-link" href="/categories/Django/">Django</a>
 
 
     
@@ -249,9 +249,31 @@
             </div>
             
                 <div class="postShorten-content">
-                    <p>안녕하세요, 심소은입니다!</p>
-<p>이렇게 포스팅을 하는거군용 </p>
-<p><strong>싱기방기</strong></p>
+                    <p>values(), values_list() 둘 다 모델 객체에서 필요한 필드의 값을 가져올 때 사용하는 메소드지만,<br>리턴하는 쿼리셋의 결과에 차이점이 있으니 상황에 맞게 사용하자.</p>
+<hr>
+<h3 id="1-values"><a href="#1-values" class="headerlink" title="1. values()"></a>1. values()</h3><ul>
+<li>딕셔너리를 가진 쿼리셋을 반환한다. :  <code>&#123;&#39;필드명&#39;:&#39;값&#39;, ...&#125;</code></li>
+<li>필드를 지정하지 않으면 모든 필드를 반환하고, 필드를 지정하면 지정한 필드만 반환한다.</li>
+</ul>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">ReviewScrap.objects.<span class="built_in">filter</span>(user=pk).values()</span><br><span class="line"><span class="comment"># &lt;QuerySet [&#123;&#x27;user_id&#x27;: 9, &#x27;reviewscrapid&#x27;: 155, &#x27;review_id&#x27;: 155, &#x27;updatetime&#x27;: datetime.datetime(2021, 2, 25, 1, 11, 29)&#125;, &#123;&#x27;user_id&#x27;: 9, &#x27;reviewscrapid&#x27;: 156, &#x27;review_id&#x27;: 156, &#x27;updatetime&#x27;: datetime.datetime(2021, 2, 25, 1, 11, 29)&#125;, ...&#x27;]&gt;</span></span><br><span class="line"></span><br><span class="line">ReviewScrap.objects.<span class="built_in">filter</span>(user=pk).values(<span class="string">&#x27;review_id&#x27;</span>)</span><br><span class="line"><span class="comment"># &lt;QuerySet [&#123;&#x27;review_id&#x27;: 155&#125;, ...&#x27;]&gt;</span></span><br><span class="line"></span><br><span class="line">ReviewScrap.objects.<span class="built_in">filter</span>(user=pk).values(<span class="string">&#x27;review_id&#x27;</span>, <span class="string">&#x27;user_id&#x27;</span>)</span><br><span class="line"><span class="comment"># &lt;QuerySet [&#123;&#x27;user_id&#x27;: 11, &#x27;review_id&#x27;: 206&#125;, &#123;&#x27;user_id&#x27;: 11, &#x27;review_id&#x27;: 207&#125;, ...&#x27;]&gt;</span></span><br></pre></td></tr></table></figure>
+<br/>
+
+<h3 id="2-values-list"><a href="#2-values-list" class="headerlink" title="2. values_list()"></a>2. values_list()</h3><ul>
+<li>튜플을 가진 쿼리셋을 반환한다.  :  <code>(&#39;값&#39;, ...)</code></li>
+<li>필드를 지정하지 않으면 모든 필드를 반환하고, 필드를 지정하면 지정한 필드만 반환한다.</li>
+</ul>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">ReviewScrap.objects.<span class="built_in">filter</span>(user=pk).values_list()</span><br><span class="line"><span class="comment"># &lt;QuerySet [(155, 155, 9, datetime.datetime(2021, 2, 25, 1, 11, 29)), (156, 156, 9, datetime.datetime(2021, 2, 25, 1, 11, 29)), ...&#x27;]&gt;</span></span><br><span class="line"></span><br><span class="line">ReviewScrap.objects.<span class="built_in">filter</span>(user=pk).values_list(<span class="string">&#x27;review_id&#x27;</span>)</span><br><span class="line"><span class="comment"># &lt;QuerySet [(155,), (156,), ...&#x27;]&gt;</span></span><br><span class="line"></span><br><span class="line">ReviewScrap.objects.<span class="built_in">filter</span>(user=pk).values_list(<span class="string">&#x27;review_id&#x27;</span>, <span class="string">&#x27;user_id&#x27;</span>)</span><br><span class="line"><span class="comment"># &lt;QuerySet [(206, 11), (207, 11), ...&#x27;]&gt;</span></span><br></pre></td></tr></table></figure>
+<h4 id="values-list-의-flat-True"><a href="#values-list-의-flat-True" class="headerlink" title="values_list()의 flat=True"></a>values_list()의 flat=True</h4><ul>
+<li>필드 외에 <code>flat</code> 파라미터를 True로 지정하면, 튜플이 아닌 단일값을 반환한다.  :  <code>&#39;값&#39;</code></li>
+<li>이 경우에는 1개의 필드만 지정할 수 있다.</li>
+</ul>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">ReviewScrap.objects.<span class="built_in">filter</span>(user=pk).values_list(<span class="string">&#x27;review_id&#x27;</span>, flat=<span class="literal">True</span>)</span><br><span class="line"><span class="comment"># &lt;QuerySet [155, 156, ...&#x27;]&gt;</span></span><br></pre></td></tr></table></figure>
+<br/>
+
+<hr>
+<blockquote>
+<p>Reference : <a target="_blank" rel="noopener" href="https://docs.djangoproject.com/en/3.1/ref/models/querysets/#values">https://docs.djangoproject.com/en/3.1/ref/models/querysets/#values</a></p>
+</blockquote>
 
                     
                         
@@ -261,7 +283,7 @@
                     
                         <p>
                             <a
-                                href="/2021/01/13/%ED%8F%AC%EC%8A%A4%ED%8C%85-%ED%85%8C%EC%8A%A4%ED%8A%B8/#post-footer"
+                                href="/2021/02/25/210225-1/#post-footer"
                                 class="postShorten-excerpt_link link"
                                 aria-label=""
                             >
