@@ -186,24 +186,6 @@
             
         </ul>
         
-            <ul class="sidebar-buttons">
-            
-                <li class="sidebar-button">
-                    
-                        <a
-                            class="sidebar-button-link "
-                            href="/atom.xml"
-                            
-                            rel="noopener"
-                            title="RSS"
-                        >
-                        <i class="sidebar-button-icon fa fa-rss" aria-hidden="true"></i>
-                        <span class="sidebar-button-desc">RSS</span>
-                    </a>
-            </li>
-            
-        </ul>
-        
     </div>
 </nav>
 
@@ -278,7 +260,7 @@
 <figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">&gt;&gt;&gt; </span>User.objects.<span class="built_in">filter</span>(name=<span class="string">&#x27;soeun&#x27;</span>).only(<span class="string">&#x27;name&#x27;</span>, <span class="string">&#x27;birth&#x27;</span>)</span><br><span class="line">&lt;QuerySet[&lt;User: User <span class="built_in">object</span>&gt;]&gt;</span><br></pre></td></tr></table></figure>
 <p><strong>주의점</strong> : first() 처럼 한 row의 전 필드를 가져오는 특징을 가진 메서드와 함께 사용하면, only를 사용하더라도 전체조회를 하게된다.</p>
 <figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">&gt;&gt;&gt; </span>User.objects.<span class="built_in">filter</span>(name=<span class="string">&#x27;soeun&#x27;</span>).only(<span class="string">&#x27;name&#x27;</span>, <span class="string">&#x27;birth&#x27;</span>).first()</span><br></pre></td></tr></table></figure>
-<p>시에 반환되는 User 객체에는, ‘name’, ‘birth’ 필드 뿐만아니라 다른 값도 함께 반환된다.<br>(실제로 only()에 해당하는 쿼리 한번, first()에 해당하는 쿼리 한번 해서 총 2번의 쿼리를 생성한다.)<br>따라서 only()와 first()를 함께 쓰는 것은 잘못된 방식이며, 이는 아래와 같은 방식으로 구현할 수 있다.</p>
+<p>위 예제처럼 호출시에 반환되는 User 객체에는, ‘name’, ‘birth’ 필드 뿐만아니라 다른 값도 함께 반환된다.<br>(실제로 only()에 해당하는 쿼리 한번, first()에 해당하는 쿼리 한번 해서 총 2번의 쿼리를 생성한다.)<br>따라서 only()와 first()를 함께 쓰는 것은 잘못된 방식이며, 이는 아래와 같은 방식으로 구현할 수 있다.</p>
 <figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">&gt;&gt;&gt; </span>User.<span class="built_in">object</span>.only(<span class="string">&#x27;name&#x27;</span>, <span class="string">&#x27;birth&#x27;</span>).get(name=<span class="string">&#x27;soeun&#x27;</span>)</span><br></pre></td></tr></table></figure>
 
 <hr>
@@ -324,9 +306,9 @@
                         <a
                             class="link-unstyled"
                             href="/2021/01/12/hello-world/"
-                            aria-label=": Hello World"
+                            aria-label=": Hexo Quick Start"
                         >
-                            Hello World
+                            Hexo Quick Start
                         </a>
                     
                 </h1>
@@ -342,8 +324,7 @@
             </div>
             
                 <div class="postShorten-content">
-                    <p>Welcome to <a target="_blank" rel="noopener" href="https://hexo.io/">Hexo</a>! This is your very first post. Check <a target="_blank" rel="noopener" href="https://hexo.io/docs/">documentation</a> for more info. If you get any problems when using Hexo, you can find the answer in <a target="_blank" rel="noopener" href="https://hexo.io/docs/troubleshooting.html">troubleshooting</a> or you can ask me on <a target="_blank" rel="noopener" href="https://github.com/hexojs/hexo/issues">GitHub</a>.</p>
-<h2 id="Quick-Start"><a href="#Quick-Start" class="headerlink" title="Quick Start"></a>Quick Start</h2><h3 id="Create-a-new-post"><a href="#Create-a-new-post" class="headerlink" title="Create a new post"></a>Create a new post</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">$ hexo new <span class="string">&quot;My New Post&quot;</span></span><br></pre></td></tr></table></figure>
+                    <h3 id="Create-a-new-post"><a href="#Create-a-new-post" class="headerlink" title="Create a new post"></a>Create a new post</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">$ hexo new <span class="string">&quot;My New Post&quot;</span></span><br></pre></td></tr></table></figure>
 <p>More info: <a target="_blank" rel="noopener" href="https://hexo.io/docs/writing.html">Writing</a></p>
 <h3 id="Run-server"><a href="#Run-server" class="headerlink" title="Run server"></a>Run server</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">$ hexo server</span><br></pre></td></tr></table></figure>
 <p>More info: <a target="_blank" rel="noopener" href="https://hexo.io/docs/server.html">Server</a></p>
