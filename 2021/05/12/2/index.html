@@ -6,18 +6,23 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="generator" content="Everyday Sonni Day :)">
-    <title>Everyday Sonni Day :)</title>
+    <title>[Django] Unit Test의 Mocking! @patch - Everyday Sonni Day :)</title>
     <meta name="author" content="Soeun Shim">
     
     
     
-    <script type="application/ld+json">{"@context":"http://schema.org","@type":"Website","@id":"https://sonniday.github.io","author":{"@type":"Person","name":"Soeun Shim","sameAs":[],"image":"soeun_profile.jpeg"},"name":"Everyday Sonni Day :)","description":"","url":"https://sonniday.github.io"}</script>
-    <meta property="og:type" content="blog">
-<meta property="og:title" content="Everyday Sonni Day :)">
-<meta property="og:url" content="https://sonniday.github.io/index.html">
+    <script type="application/ld+json">{"@context":"http://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Soeun Shim","sameAs":[],"image":"soeun_profile.jpeg"},"articleBody":"Mocking ?Mock 은 ‘거짓된, 가짜의’ 라는 사전적 의미를 가진 것 처럼, 테스트코드를 작성할 때 가짜 값을 사용할 수 있게 하는 객체이다. 이 Mock 객체를 이용하여, 단위 테스트 시에 외부에 의존하는 부분을 임의의 가짜로 대체하여 테스트 하는 상황이 자주 발생하는데, 이것을 ‘Mocking’ 이라고 한다.\nMocking 방법은 2가지가 있다.\n\n직접 Mock 객체를 생성하여 사용\nunittest.mock 모듈의 @patch 데코레이터를 사용\n\n이 글은 Mocking시 주로 사용되는 Mock객체의 속성에 대해 먼저 알아보고, @patch 데코레이터를 사용하는 방법에 대해 작성한다.\n\n1. Mock@patch 에서 사용되는 Mock 객체의 주요 속성을 알아보자.\n\nreturn_value: 반환되는 값을 설정한다.1234&gt;&gt;&gt; mock = Mock()&gt;&gt;&gt; mock.return_value = &#x27;hello&#x27;&gt;&gt;&gt; mock()&#x27;hello&#x27;\nside_effect : 설정하는 값에 따라 동작이 다르다.\nException 클래스를 지정하면 에러를 발생한다.1234&gt;&gt;&gt; mock = Mock()&gt;&gt;&gt; mock.side_effect = Exception(&#x27;Error!&#x27;)&gt;&gt;&gt; mock()Exception: Error!\n함수를 지정하면 해당 함수를 호출한다.1234567&gt;&gt;&gt; def custom_side_effect(*args, **kwargs):...   return 3...&gt;&gt;&gt; mock = Mock()&gt;&gt;&gt; mock.side_effect = custom_side_effect&gt;&gt;&gt; mock()3  \nIterable(ex.list)을 지정하면 mock 호출 순서대로 해당 값을 반환한다.12345678&gt;&gt;&gt; mock = Mock()&gt;&gt;&gt; mock.side_effect = [3, 2, 1]&gt;&gt;&gt; mock()3&gt;&gt;&gt; mock()2&gt;&gt;&gt; mock()1\n\n\n\n\n\n2. @patchunittest.mock 모듈의 @patch 데코레이터를 이용하면, 지정한 특정 메서드를 Mocking하여 해당 메서드가 호출될 때 mock 객체로 patch 한다. patch된 mock 객체는 테스트가 끝나면 원래되로 복원된다.\n12345678910# views.pyfrom example_api.client import ExampleAPI...example_api = ExampleAPI()try:    example = example_api.get(id=param_id) # patch될 부분except ExampleAPI.HttpError as error:    raise NotFound(&#x27;Not Found!&#x27;)\n12345678910# test_views.pyfrom unittest.mock import patch@patch(&#x27;example_api.client.ExampleAPI.get&#x27;)def test_example_view_200(self, mock_example):    mock_example.return_value = &#123; &#x27;key1&#x27;: value1, &#x27;key2&#x27;: value2 &#125;    response = self.client.get(&#x27;/user/1234&#x27;, content_type=&#x27;application/json&#x27;)    self.assertEqual(status.HTTP_200_OK, response.status_code)\n\n@patch(&#39;example_api.client.ExampleAPI.get&#39;)Mocking 이 필요한 메서드를 지정하는 부분이다.지정할 메서드의 path는 package.module.Class.method 형태의 문자열로 받는다.import된 경로를 잘 확인한 후 적자!\ntest_example_view(self, mock_example)patch된 mock 객체를 테스트 메서드의 매개변수로 받아 사용한다.한 테스트 함수에 여러 @patch 를 사용할 경우, 매개변수 순서에 유의하자.제일 위에 있는 @patch 의 mock 객체를 매개변수중 가장 마지막으로 받는다. (순서 거꾸로)\nmock_example.return_value = &#123; &#39;key1&#39;: value1, &#39;key2&#39;: value2 &#125;리턴될 값을 지정하는 것이다.테스트가 돌던 중 patch될 메서드로 지정한 example_api.get() 를 만났을때, 실제 example api를 호출하는 것이 아니라, return_value 로 지정된 가짜 데이터를 리턴한다.\n\n123456# test_views.py@patch(&#x27;example_api.client.ExampleAPI.get&#x27;)def test_example_view_404(self, mock_example):    mock_example.side_effect = Exception(&#x27;Error!&#x27;)    self.assertEqual(status.HTTP_404_NOT_FOUND, response.status_code)\n\nmock_example.side_effect = Exception(&#39;Error!&#39;)테스트가 돌던 중 patch될 메서드로 지정한 example_api.get() 을 만났을 때, 어떤 값을 return 하는게 아니라, Exception(&#39;Error!&#39;) 익셉션을 raise 한다.예외처리가 잘 되었는지 테스트할 때 유용하다.\n\n\n오늘의 결론Mock객체의 속성을 잘 활용하자!\n\n반환 값 변경만 하면 될 때 : return_value 지정\n구현부 수정이 필요할 때 : side_effect에 커스텀 함수 지정\n예외처리 테스트가 필요할 때 : side_effect 에 Exception 클래스 지정\n\n\n\nReferencehttps://python.flowdas.com/library/unittest.mock.html#unittest.mock.Mock.return_value\n\n","dateCreated":"2021-05-12T19:20:56+09:00","dateModified":"2021-05-12T22:44:14+09:00","datePublished":"2021-05-12T19:20:56+09:00","description":"","headline":"[Django] Unit Test의 Mocking! @patch","image":[],"mainEntityOfPage":{"@type":"WebPage","@id":"https://sonniday.github.io/2021/05/12/2/"},"publisher":{"@type":"Organization","name":"Soeun Shim","sameAs":[],"image":"soeun_profile.jpeg","logo":{"@type":"ImageObject","url":"soeun_profile.jpeg"}},"url":"https://sonniday.github.io/2021/05/12/2/","keywords":"Django"}</script>
+    <meta name="description" content="Mocking ?Mock 은 ‘거짓된, 가짜의’ 라는 사전적 의미를 가진 것 처럼, 테스트코드를 작성할 때 가짜 값을 사용할 수 있게 하는 객체이다. 이 Mock 객체를 이용하여, 단위 테스트 시에 외부에 의존하는 부분을 임의의 가짜로 대체하여 테스트 하는 상황이 자주 발생하는데, 이것을 ‘Mocking’ 이라고 한다. Mocking 방법은 2가지가 있다.">
+<meta property="og:type" content="blog">
+<meta property="og:title" content="[Django] Unit Test의 Mocking! @patch">
+<meta property="og:url" content="https://sonniday.github.io/2021/05/12/2/index.html">
 <meta property="og:site_name" content="Everyday Sonni Day :)">
+<meta property="og:description" content="Mocking ?Mock 은 ‘거짓된, 가짜의’ 라는 사전적 의미를 가진 것 처럼, 테스트코드를 작성할 때 가짜 값을 사용할 수 있게 하는 객체이다. 이 Mock 객체를 이용하여, 단위 테스트 시에 외부에 의존하는 부분을 임의의 가짜로 대체하여 테스트 하는 상황이 자주 발생하는데, 이것을 ‘Mocking’ 이라고 한다. Mocking 방법은 2가지가 있다.">
 <meta property="og:locale" content="en_US">
+<meta property="article:published_time" content="2021-05-12T10:20:56.000Z">
+<meta property="article:modified_time" content="2021-05-12T13:44:14.788Z">
 <meta property="article:author" content="Soeun Shim">
+<meta property="article:tag" content="Django">
 <meta name="twitter:card" content="summary">
     
     
@@ -48,6 +53,8 @@
     
 
     
+        
+    
 </head>
 
     <body>
@@ -61,7 +68,7 @@
         
     
 
-<header id="header" data-behavior="1">
+<header id="header" data-behavior="4">
     <i id="btn-open-sidebar" class="fa fa-lg fa-bars"></i>
     <div class="header-title">
         <a
@@ -94,7 +101,7 @@
         
     
 
-<nav id="sidebar" data-behavior="1">
+<nav id="sidebar" data-behavior="4">
     <div class="sidebar-container">
         
             <div class="sidebar-profile">
@@ -190,29 +197,22 @@
 </nav>
 
             
-            <div id="main" data-behavior="1"
+            <div id="main" data-behavior="4"
                  class="
                         hasCoverMetaIn
                         ">
-                <section class="postShorten-group main-content-wrap">
+                
+<article class="post">
     
     
-    <article class="postShorten postShorten--thumbnailimg-bottom">
-        <div class="postShorten-wrap">
-            
-            <div class="postShorten-header">
-                <h1 class="postShorten-title">
-                    
-                        <a
-                            class="link-unstyled"
-                            href="/2021/05/12/2/"
-                            aria-label=": [Django] Unit Test의 Mocking! @patch"
-                        >
-                            [Django] Unit Test의 Mocking! @patch
-                        </a>
-                    
-                </h1>
-                <div class="postShorten-meta">
+        <div class="post-header main-content-wrap text-left">
+    
+        <h1 class="post-title">
+            [Django] Unit Test의 Mocking! @patch
+        </h1>
+    
+    
+        <div class="post-meta">
     <time datetime="2021-05-12T19:20:56+09:00">
 	
 		    May 12, 2021
@@ -227,10 +227,13 @@
     
 </div>
 
-            </div>
-            
-                <div class="postShorten-content">
-                    <h2 id="Mocking"><a href="#Mocking" class="headerlink" title="Mocking ?"></a>Mocking ?</h2><p><code>Mock</code> 은 ‘거짓된, 가짜의’ 라는 사전적 의미를 가진 것 처럼, 테스트코드를 작성할 때 가짜 값을 사용할 수 있게 하는 객체이다. 이 <code>Mock</code> 객체를 이용하여, 단위 테스트 시에 외부에 의존하는 부분을 임의의 가짜로 대체하여 테스트 하는 상황이 자주 발생하는데, 이것을 ‘Mocking’ 이라고 한다.</p>
+    
+</div>
+
+    
+    <div class="post-content markdown">
+        <div class="main-content-wrap">
+            <h2 id="Mocking"><a href="#Mocking" class="headerlink" title="Mocking ?"></a>Mocking ?</h2><p><code>Mock</code> 은 ‘거짓된, 가짜의’ 라는 사전적 의미를 가진 것 처럼, 테스트코드를 작성할 때 가짜 값을 사용할 수 있게 하는 객체이다. 이 <code>Mock</code> 객체를 이용하여, 단위 테스트 시에 외부에 의존하는 부분을 임의의 가짜로 대체하여 테스트 하는 상황이 자주 발생하는데, 이것을 ‘Mocking’ 이라고 한다.</p>
 <p>Mocking 방법은 2가지가 있다.</p>
 <ol>
 <li>직접 <code>Mock</code> 객체를 생성하여 사용</li>
@@ -274,196 +277,122 @@
 <p>Reference<br><a target="_blank" rel="noopener" href="https://python.flowdas.com/library/unittest.mock.html#unittest.mock.Mock.return_value">https://python.flowdas.com/library/unittest.mock.html#unittest.mock.Mock.return_value</a></p>
 </blockquote>
 
-                    
-                        
-
-
-                    
-                    
-                        <p>
-                            <a
-                                href="/2021/05/12/2/#post-footer"
-                                class="postShorten-excerpt_link link"
-                                aria-label=""
-                            >
-                                Comment and share
-                            </a>
-                        </p>
-                    
-                </div>
             
+
+
         </div>
+    </div>
+    <div id="post-footer" class="post-footer main-content-wrap">
         
-    </article>
-    
-    
-    <article class="postShorten postShorten--thumbnailimg-bottom">
-        <div class="postShorten-wrap">
-            
-            <div class="postShorten-header">
-                <h1 class="postShorten-title">
-                    
-                        <a
-                            class="link-unstyled"
-                            href="/2021/04/14/1/"
-                            aria-label=": [Django] 필요한 필드만 골라서 조회하기 values(), values_list(), only()"
-                        >
-                            [Django] 필요한 필드만 골라서 조회하기 values(), values_list(), only()
-                        </a>
-                    
-                </h1>
-                <div class="postShorten-meta">
-    <time datetime="2021-04-14T19:03:18+09:00">
-	
-		    Apr 14, 2021
-    	
-    </time>
-    
-        <span>in </span>
-        
-    <a class="category-link" href="/categories/Django/">Django</a>
-
-
-    
-</div>
+            <div class="post-footer-tags">
+                <span class="text-color-light text-small">TAGGED IN</span><br/>
+                
+    <a class="tag tag--primary tag--small t-none-link" href="/tags/Django/" rel="tag">Django</a>
 
             </div>
-            
-                <div class="postShorten-content">
-                    <p>우리가 장고 모델에서 필요한 필드만 골라서 조회를 하려면 크게 두 가지 방법이 있다.</p>
-<ol>
-<li>values() 와 values_list() 메소드 사용하기</li>
-<li>only() 메소드 사용하기</li>
-</ol>
-<p>이 글에서는 총 세 개의 메소드에 대해 다룰 것이지만 크게 두 가지 방법이 있다고 한 이유는, values()와 values_list()는 바로 값을 가진 쿼리셋을 반환하지만, only()는 모델 객체를 가진 쿼리셋을 반환하기 때문이다.</p>
-<p>쿼리셋의 결과를 알아두고, 필요에 맞게 적절히 사용하자.</p>
-<hr>
-<h3 id="1-values"><a href="#1-values" class="headerlink" title="1. values()"></a>1. values()</h3><ul>
-<li>딕셔너리를 가진 쿼리셋을 반환한다. : <code>&#123;&#39;필드명&#39; : &#39;값&#39;, ...&#125;</code></li>
-<li>필드를 지정하지 않으면 모든 필드를 반환하고, 필드를 지정하면 지정한 필드만 반환한다.</li>
-</ul>
-<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">&gt;&gt;&gt; </span>User.objects.<span class="built_in">filter</span>(name=<span class="string">&#x27;soeun&#x27;</span>).values()</span><br><span class="line">&lt;QuerySet[&#123;<span class="string">&#x27;id&#x27;</span>: <span class="number">1</span>, <span class="string">&#x27;name&#x27;</span>: <span class="string">&#x27;soeun&#x27;</span>, <span class="string">&#x27;phone&#x27;</span>: <span class="string">&#x27;010-1234-5678&#x27;</span>, <span class="string">&#x27;birth&#x27;</span>: <span class="string">&#x27;0919&#x27;</span>&#125;]&gt;</span><br><span class="line"></span><br><span class="line"><span class="meta">&gt;&gt;&gt; </span>User.objects.<span class="built_in">filter</span>(name=<span class="string">&#x27;soeun&#x27;</span>).values(<span class="string">&#x27;name&#x27;</span>, <span class="string">&#x27;birth&#x27;</span>)</span><br><span class="line">&lt;QuerySet[&#123;<span class="string">&#x27;name&#x27;</span>:<span class="string">&#x27;soeun&#x27;</span>, <span class="string">&#x27;birth&#x27;</span>: <span class="string">&#x27;0919&#x27;</span>&#125;]&gt;</span><br></pre></td></tr></table></figure>
-<h3 id="2-values-list"><a href="#2-values-list" class="headerlink" title="2. values_list()"></a>2. values_list()</h3><ul>
-<li>튜플을 가진 쿼리셋을 반환한다. : <code>(&#39;값&#39;, ...)</code></li>
-<li>필드를 지정하지 않으면 모든 필드를 반환하고, 필드를 지정하면 지정한 필드만 반환한다.</li>
-</ul>
-<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">&gt;&gt;&gt; </span>User.objects.<span class="built_in">filter</span>(name=<span class="string">&#x27;soeun&#x27;</span>).values_list()</span><br><span class="line">&lt;QuerySet[(<span class="number">1</span>, <span class="string">&#x27;soeun&#x27;</span>, <span class="string">&#x27;010-1234-5678&#x27;</span>, <span class="string">&#x27;0919&#x27;</span>)]&gt;</span><br><span class="line"></span><br><span class="line"><span class="meta">&gt;&gt;&gt; </span>User.objects.<span class="built_in">filter</span>(name=<span class="string">&#x27;soeun&#x27;</span>).values_list(<span class="string">&#x27;name&#x27;</span>, <span class="string">&#x27;birth&#x27;</span>)</span><br><span class="line">&lt;QuerySet[(<span class="number">1</span>, <span class="string">&#x27;soeun&#x27;</span>, <span class="string">&#x27;0919&#x27;</span>)]</span><br></pre></td></tr></table></figure>
-<h4 id="values-list-의-flat-True-옵션"><a href="#values-list-의-flat-True-옵션" class="headerlink" title="values_list() 의 flat=True 옵션"></a>values_list() 의 flat=True 옵션</h4><ul>
-<li>필드 외에, <code>flat</code> 파라미터를 True로 지정하면, 튜플이 아닌 단일값을 반환한다. : <code>&#39;값&#39;</code></li>
-<li>이 경우에는 1개의 필드만 지정할 수 있다.</li>
-</ul>
-<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">&gt;&gt;&gt; </span>User.objects.values_list(<span class="string">&#x27;name&#x27;</span>, flat=<span class="literal">True</span>)</span><br><span class="line">&lt;QuerySet[<span class="string">&#x27;soeun&#x27;</span>, <span class="string">&#x27;jisu&#x27;</span>, ...]&gt;</span><br></pre></td></tr></table></figure>
-<h3 id="3-only"><a href="#3-only" class="headerlink" title="3. only()"></a>3. only()</h3><ul>
-<li>모델 객체를 가진 쿼리셋을 반환한다. : <code>&lt;User: User object&gt;</code></li>
-<li>지정된 필드 외에 id 를 항상 함께 조회한다.</li>
-</ul>
-<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">&gt;&gt;&gt; </span>User.objects.<span class="built_in">filter</span>(name=<span class="string">&#x27;soeun&#x27;</span>).only(<span class="string">&#x27;name&#x27;</span>, <span class="string">&#x27;birth&#x27;</span>)</span><br><span class="line">&lt;QuerySet[&lt;User: User <span class="built_in">object</span>&gt;]&gt;</span><br></pre></td></tr></table></figure>
-<p><strong>주의점</strong> : first() 처럼 한 row의 전 필드를 가져오는 특징을 가진 메서드와 함께 사용하면, only를 사용하더라도 전체조회를 하게된다.</p>
-<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">&gt;&gt;&gt; </span>User.objects.<span class="built_in">filter</span>(name=<span class="string">&#x27;soeun&#x27;</span>).only(<span class="string">&#x27;name&#x27;</span>, <span class="string">&#x27;birth&#x27;</span>).first()</span><br></pre></td></tr></table></figure>
-<p>위 예제처럼 호출시에 반환되는 User 객체에는, ‘name’, ‘birth’ 필드 뿐만아니라 다른 값도 함께 반환된다.<br>(실제로 only()에 해당하는 쿼리 한번, first()에 해당하는 쿼리 한번 해서 총 2번의 쿼리를 생성한다.)<br>따라서 only()와 first()를 함께 쓰는 것은 잘못된 방식이며, 이는 아래와 같은 방식으로 구현할 수 있다.</p>
-<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">&gt;&gt;&gt; </span>User.<span class="built_in">object</span>.only(<span class="string">&#x27;name&#x27;</span>, <span class="string">&#x27;birth&#x27;</span>).get(name=<span class="string">&#x27;soeun&#x27;</span>)</span><br></pre></td></tr></table></figure>
-
-<hr>
-<h4 id="오늘의-결론"><a href="#오늘의-결론" class="headerlink" title="오늘의 결론!"></a>오늘의 결론!</h4><ul>
-<li>key, value 형태의 딕셔너리 자료형이 필요한 경우에는 values()</li>
-<li>value 를 가진 튜플 또는 단일 값이 필요한 경우에는 values_list()</li>
-<li>장고 모델이 필요한 경우에는 only()</li>
-</ul>
-<hr>
-<blockquote>
-<p>Reference<br><a target="_blank" rel="noopener" href="https://docs.djangoproject.com/en/3.1/ref/models/querysets/#values">https://docs.djangoproject.com/en/3.1/ref/models/querysets/#values</a><br><a target="_blank" rel="noopener" href="https://docs.djangoproject.com/en/3.1/ref/models/querysets/#only">https://docs.djangoproject.com/en/3.1/ref/models/querysets/#only</a></p>
-</blockquote>
-
-                    
+        
+        
+            <div class="post-actions-wrap">
+    <nav>
+        <ul class="post-actions post-action-nav">
+            <li class="post-action">
+                
+                    <a
+                        class="post-action-btn btn btn--disabled"
+                        aria-hidden="true"
+                    >
                         
-
-
+                        <i class="fa fa-angle-left" aria-hidden="true"></i>
+                        <span class="hide-xs hide-sm text-small icon-ml">PREVIOUS</span>
+                    </a>
+            </li>
+            <li class="post-action">
+                
                     
+                <a
+                    class="post-action-btn btn btn--default tooltip--top"
+                    href="/2021/04/14/1/"
+                    data-tooltip="[Django] 필요한 필드만 골라서 조회하기 values(), values_list(), only()"
+                    aria-label="NEXT: [Django] 필요한 필드만 골라서 조회하기 values(), values_list(), only()"
+                >
                     
-                        <p>
-                            <a
-                                href="/2021/04/14/1/#post-footer"
-                                class="postShorten-excerpt_link link"
-                                aria-label=""
-                            >
-                                Comment and share
-                            </a>
-                        </p>
-                    
-                </div>
-            
-        </div>
+                        <span class="hide-xs hide-sm text-small icon-mr">NEXT</span>
+                        <i class="fa fa-angle-right" aria-hidden="true"></i>
+                    </a>
+            </li>
+        </ul>
+    </nav>
+    <ul class="post-actions post-action-share">
+        <li class="post-action hide-lg hide-md hide-sm">
+            <a
+                class="post-action-btn btn btn--default btn-open-shareoptions"
+                href="#btn-open-shareoptions"
+                aria-label="Share this post"
+            >
+                <i class="fa fa-share-alt" aria-hidden="true"></i>
+            </a>
+        </li>
         
-    </article>
-    
-    
-    <article class="postShorten postShorten--thumbnailimg-bottom">
-        <div class="postShorten-wrap">
             
-            <div class="postShorten-header">
-                <h1 class="postShorten-title">
-                    
-                        <a
-                            class="link-unstyled"
-                            href="/2021/01/12/hello-world/"
-                            aria-label=": Hexo Quick Start"
-                        >
-                            Hexo Quick Start
-                        </a>
-                    
-                </h1>
-                <div class="postShorten-meta">
-    <time datetime="2021-01-12T17:40:12+09:00">
-	
-		    Jan 12, 2021
-    	
-    </time>
-    
-</div>
-
-            </div>
             
-                <div class="postShorten-content">
-                    <h3 id="Create-a-new-post"><a href="#Create-a-new-post" class="headerlink" title="Create a new post"></a>Create a new post</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">$ hexo new <span class="string">&quot;My New Post&quot;</span></span><br></pre></td></tr></table></figure>
-<p>More info: <a target="_blank" rel="noopener" href="https://hexo.io/docs/writing.html">Writing</a></p>
-<h3 id="Run-server"><a href="#Run-server" class="headerlink" title="Run server"></a>Run server</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">$ hexo server</span><br></pre></td></tr></table></figure>
-<p>More info: <a target="_blank" rel="noopener" href="https://hexo.io/docs/server.html">Server</a></p>
-<h3 id="Generate-static-files"><a href="#Generate-static-files" class="headerlink" title="Generate static files"></a>Generate static files</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">$ hexo generate</span><br></pre></td></tr></table></figure>
-<p>More info: <a target="_blank" rel="noopener" href="https://hexo.io/docs/generating.html">Generating</a></p>
-<h3 id="Deploy-to-remote-sites"><a href="#Deploy-to-remote-sites" class="headerlink" title="Deploy to remote sites"></a>Deploy to remote sites</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">$ hexo deploy</span><br></pre></td></tr></table></figure>
-<p>More info: <a target="_blank" rel="noopener" href="https://hexo.io/docs/one-command-deployment.html">Deployment</a></p>
-
-                    
-                        
-
-
-                    
-                    
-                        <p>
-                            <a
-                                href="/2021/01/12/hello-world/#post-footer"
-                                class="postShorten-excerpt_link link"
-                                aria-label=""
-                            >
-                                Comment and share
-                            </a>
-                        </p>
-                    
-                </div>
-            
-        </div>
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="https://www.facebook.com/sharer/sharer.php?u=https://sonniday.github.io/2021/05/12/2/"
+                    title="Share on Facebook"
+                    aria-label="Share on Facebook"
+                >
+                    <i class="fab fa-facebook" aria-hidden="true"></i>
+                </a>
+            </li>
         
-    </article>
-    
-    <div class="pagination-bar">
-    <ul class="pagination">
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="https://twitter.com/intent/tweet?text=https://sonniday.github.io/2021/05/12/2/"
+                    title="Share on Twitter"
+                    aria-label="Share on Twitter"
+                >
+                    <i class="fab fa-twitter" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="https://plus.google.com/share?url=https://sonniday.github.io/2021/05/12/2/"
+                    title="Share on Google+"
+                    aria-label="Share on Google+"
+                >
+                    <i class="fab fa-google-plus" aria-hidden="true"></i>
+                </a>
+            </li>
         
         
-        <li class="pagination-number">page 1 of 1</li>
+            
+        
+        <li class="post-action">
+            
+                <a class="post-action-btn btn btn--default" href="#" aria-label="Back to top">
+            
+                <i class="fa fa-list" aria-hidden="true"></i>
+            </a>
+        </li>
     </ul>
 </div>
 
-</section>
+
+        
+        
+            
+        
+    </div>
+</article>
+
 
 
                 <footer id="footer" class="main-content-wrap">
@@ -473,6 +402,151 @@
 </footer>
 
             </div>
+            
+                <div id="bottom-bar" class="post-bottom-bar" data-behavior="4">
+                    <div class="post-actions-wrap">
+    <nav>
+        <ul class="post-actions post-action-nav">
+            <li class="post-action">
+                
+                    <a
+                        class="post-action-btn btn btn--disabled"
+                        aria-hidden="true"
+                    >
+                        
+                        <i class="fa fa-angle-left" aria-hidden="true"></i>
+                        <span class="hide-xs hide-sm text-small icon-ml">PREVIOUS</span>
+                    </a>
+            </li>
+            <li class="post-action">
+                
+                    
+                <a
+                    class="post-action-btn btn btn--default tooltip--top"
+                    href="/2021/04/14/1/"
+                    data-tooltip="[Django] 필요한 필드만 골라서 조회하기 values(), values_list(), only()"
+                    aria-label="NEXT: [Django] 필요한 필드만 골라서 조회하기 values(), values_list(), only()"
+                >
+                    
+                        <span class="hide-xs hide-sm text-small icon-mr">NEXT</span>
+                        <i class="fa fa-angle-right" aria-hidden="true"></i>
+                    </a>
+            </li>
+        </ul>
+    </nav>
+    <ul class="post-actions post-action-share">
+        <li class="post-action hide-lg hide-md hide-sm">
+            <a
+                class="post-action-btn btn btn--default btn-open-shareoptions"
+                href="#btn-open-shareoptions"
+                aria-label="Share this post"
+            >
+                <i class="fa fa-share-alt" aria-hidden="true"></i>
+            </a>
+        </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="https://www.facebook.com/sharer/sharer.php?u=https://sonniday.github.io/2021/05/12/2/"
+                    title="Share on Facebook"
+                    aria-label="Share on Facebook"
+                >
+                    <i class="fab fa-facebook" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="https://twitter.com/intent/tweet?text=https://sonniday.github.io/2021/05/12/2/"
+                    title="Share on Twitter"
+                    aria-label="Share on Twitter"
+                >
+                    <i class="fab fa-twitter" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="https://plus.google.com/share?url=https://sonniday.github.io/2021/05/12/2/"
+                    title="Share on Google+"
+                    aria-label="Share on Google+"
+                >
+                    <i class="fab fa-google-plus" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+        
+            
+        
+        <li class="post-action">
+            
+                <a class="post-action-btn btn btn--default" href="#" aria-label="Back to top">
+            
+                <i class="fa fa-list" aria-hidden="true"></i>
+            </a>
+        </li>
+    </ul>
+</div>
+
+
+                </div>
+                
+    <div id="share-options-bar" class="share-options-bar" data-behavior="4">
+        <i id="btn-close-shareoptions" class="fa fa-times"></i>
+        <ul class="share-options">
+            
+                
+                
+                <li class="share-option">
+                    <a
+                        class="share-option-btn"
+                        target="new"
+                        href="https://www.facebook.com/sharer/sharer.php?u=https://sonniday.github.io/2021/05/12/2/"
+                        aria-label="Share on Facebook"
+                    >
+                        <i class="fab fa-facebook" aria-hidden="true"></i><span>Share on Facebook</span>
+                    </a>
+                </li>
+            
+                
+                
+                <li class="share-option">
+                    <a
+                        class="share-option-btn"
+                        target="new"
+                        href="https://twitter.com/intent/tweet?text=https://sonniday.github.io/2021/05/12/2/"
+                        aria-label="Share on Twitter"
+                    >
+                        <i class="fab fa-twitter" aria-hidden="true"></i><span>Share on Twitter</span>
+                    </a>
+                </li>
+            
+                
+                
+                <li class="share-option">
+                    <a
+                        class="share-option-btn"
+                        target="new"
+                        href="https://plus.google.com/share?url=https://sonniday.github.io/2021/05/12/2/"
+                        aria-label="Share on Google+"
+                    >
+                        <i class="fab fa-google-plus" aria-hidden="true"></i><span>Share on Google+</span>
+                    </a>
+                </li>
+            
+        </ul>
+    </div>
+
+
             
         </div>
         
@@ -531,6 +605,8 @@
 
 <!--SCRIPTS END-->
 
+
+    
 
 
 

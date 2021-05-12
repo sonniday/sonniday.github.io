@@ -206,6 +206,106 @@
                     
                         <a
                             class="link-unstyled"
+                            href="/2021/05/12/2/"
+                            aria-label=": [Django] Unit Test의 Mocking! @patch"
+                        >
+                            [Django] Unit Test의 Mocking! @patch
+                        </a>
+                    
+                </h1>
+                <div class="postShorten-meta">
+    <time datetime="2021-05-12T19:20:56+09:00">
+	
+		    May 12, 2021
+    	
+    </time>
+    
+        <span>in </span>
+        
+    <a class="category-link" href="/categories/Django/">Django</a>
+
+
+    
+</div>
+
+            </div>
+            
+                <div class="postShorten-content">
+                    <h2 id="Mocking"><a href="#Mocking" class="headerlink" title="Mocking ?"></a>Mocking ?</h2><p><code>Mock</code> 은 ‘거짓된, 가짜의’ 라는 사전적 의미를 가진 것 처럼, 테스트코드를 작성할 때 가짜 값을 사용할 수 있게 하는 객체이다. 이 <code>Mock</code> 객체를 이용하여, 단위 테스트 시에 외부에 의존하는 부분을 임의의 가짜로 대체하여 테스트 하는 상황이 자주 발생하는데, 이것을 ‘Mocking’ 이라고 한다.</p>
+<p>Mocking 방법은 2가지가 있다.</p>
+<ol>
+<li>직접 <code>Mock</code> 객체를 생성하여 사용</li>
+<li><code>unittest.mock</code> 모듈의 <code>@patch</code> 데코레이터를 사용</li>
+</ol>
+<p>이 글은 Mocking시 주로 사용되는 <code>Mock</code>객체의 속성에 대해 먼저 알아보고, <code>@patch</code> 데코레이터를 사용하는 방법에 대해 작성한다.</p>
+<hr>
+<h3 id="1-Mock"><a href="#1-Mock" class="headerlink" title="1. Mock"></a>1. Mock</h3><p><code>@patch</code> 에서 사용되는 <code>Mock</code> 객체의 주요 속성을 알아보자.</p>
+<ul>
+<li><h4 id="return-value-반환되는-값을-설정한다"><a href="#return-value-반환되는-값을-설정한다" class="headerlink" title="return_value: 반환되는 값을 설정한다."></a><code>return_value</code>: 반환되는 값을 설정한다.</h4><figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">&gt;&gt;&gt; </span>mock = Mock()</span><br><span class="line"><span class="meta">&gt;&gt;&gt; </span>mock.return_value = <span class="string">&#x27;hello&#x27;</span></span><br><span class="line"><span class="meta">&gt;&gt;&gt; </span>mock()</span><br><span class="line"><span class="string">&#x27;hello&#x27;</span></span><br></pre></td></tr></table></figure></li>
+<li><h4 id="side-effect-설정하는-값에-따라-동작이-다르다"><a href="#side-effect-설정하는-값에-따라-동작이-다르다" class="headerlink" title="side_effect : 설정하는 값에 따라 동작이 다르다."></a><code>side_effect</code> : 설정하는 값에 따라 동작이 다르다.</h4><ul>
+<li>Exception 클래스를 지정하면 에러를 발생한다.<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">&gt;&gt;&gt; </span>mock = Mock()</span><br><span class="line"><span class="meta">&gt;&gt;&gt; </span>mock.side_effect = Exception(<span class="string">&#x27;Error!&#x27;</span>)</span><br><span class="line"><span class="meta">&gt;&gt;&gt; </span>mock()</span><br><span class="line">Exception: Error!</span><br></pre></td></tr></table></figure></li>
+<li>함수를 지정하면 해당 함수를 호출한다.<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">&gt;&gt;&gt; </span><span class="function"><span class="keyword">def</span> <span class="title">custom_side_effect</span>(<span class="params">*args, **kwargs</span>):</span></span><br><span class="line"><span class="meta">... </span>  <span class="keyword">return</span> <span class="number">3</span></span><br><span class="line">...</span><br><span class="line"><span class="meta">&gt;&gt;&gt; </span>mock = Mock()</span><br><span class="line"><span class="meta">&gt;&gt;&gt; </span>mock.side_effect = custom_side_effect</span><br><span class="line"><span class="meta">&gt;&gt;&gt; </span>mock()</span><br><span class="line"><span class="number">3</span>  </span><br></pre></td></tr></table></figure></li>
+<li>Iterable(ex.list)을 지정하면 <code>mock</code> 호출 순서대로 해당 값을 반환한다.<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">&gt;&gt;&gt; </span>mock = Mock()</span><br><span class="line"><span class="meta">&gt;&gt;&gt; </span>mock.side_effect = [<span class="number">3</span>, <span class="number">2</span>, <span class="number">1</span>]</span><br><span class="line"><span class="meta">&gt;&gt;&gt; </span>mock()</span><br><span class="line"><span class="number">3</span></span><br><span class="line"><span class="meta">&gt;&gt;&gt; </span>mock()</span><br><span class="line"><span class="number">2</span></span><br><span class="line"><span class="meta">&gt;&gt;&gt; </span>mock()</span><br><span class="line"><span class="number">1</span></span><br></pre></td></tr></table></figure>
+
+</li>
+</ul>
+</li>
+</ul>
+<h3 id="2-patch"><a href="#2-patch" class="headerlink" title="2. @patch"></a>2. @patch</h3><p><code>unittest.mock</code> 모듈의 <code>@patch</code> 데코레이터를 이용하면, 지정한 특정 메서드를 Mocking하여 해당 메서드가 호출될 때 <code>mock</code> 객체로 patch 한다. patch된 <code>mock</code> 객체는 테스트가 끝나면 원래되로 복원된다.</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># views.py</span></span><br><span class="line"><span class="keyword">from</span> example_api.client <span class="keyword">import</span> ExampleAPI</span><br><span class="line"></span><br><span class="line">...</span><br><span class="line">example_api = ExampleAPI()</span><br><span class="line"></span><br><span class="line"><span class="keyword">try</span>:</span><br><span class="line">    example = example_api.get(<span class="built_in">id</span>=param_id) <span class="comment"># patch될 부분</span></span><br><span class="line"><span class="keyword">except</span> ExampleAPI.HttpError <span class="keyword">as</span> error:</span><br><span class="line">    <span class="keyword">raise</span> NotFound(<span class="string">&#x27;Not Found!&#x27;</span>)</span><br></pre></td></tr></table></figure>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># test_views.py</span></span><br><span class="line"><span class="keyword">from</span> unittest.mock <span class="keyword">import</span> patch</span><br><span class="line"></span><br><span class="line"><span class="meta">@patch(<span class="params"><span class="string">&#x27;example_api.client.ExampleAPI.get&#x27;</span></span>)</span></span><br><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">test_example_view_200</span>(<span class="params">self, mock_example</span>):</span></span><br><span class="line">    mock_example.return_value = &#123; <span class="string">&#x27;key1&#x27;</span>: value1, <span class="string">&#x27;key2&#x27;</span>: value2 &#125;</span><br><span class="line"></span><br><span class="line">    response = self.client.get(<span class="string">&#x27;/user/1234&#x27;</span>, content_type=<span class="string">&#x27;application/json&#x27;</span>)</span><br><span class="line"></span><br><span class="line">    self.assertEqual(status.HTTP_200_OK, response.status_code)</span><br></pre></td></tr></table></figure>
+<ol>
+<li><code>@patch(&#39;example_api.client.ExampleAPI.get&#39;)</code><br>Mocking 이 필요한 메서드를 지정하는 부분이다.<br>지정할 메서드의 path는 <code>package.module.Class.method</code> 형태의 문자열로 받는다.<br>import된 경로를 잘 확인한 후 적자!</li>
+<li><code>test_example_view(self, mock_example)</code><br>patch된 <code>mock</code> 객체를 테스트 메서드의 매개변수로 받아 사용한다.<br>한 테스트 함수에 여러 <code>@patch</code> 를 사용할 경우, 매개변수 순서에 유의하자.<br>제일 위에 있는 <code>@patch</code> 의 <code>mock</code> 객체를 매개변수중 가장 마지막으로 받는다. (순서 거꾸로)</li>
+<li><code>mock_example.return_value = &#123; &#39;key1&#39;: value1, &#39;key2&#39;: value2 &#125;</code><br>리턴될 값을 지정하는 것이다.<br>테스트가 돌던 중 patch될 메서드로 지정한 <code>example_api.get()</code> 를 만났을때, 실제 example api를 호출하는 것이 아니라, <code>return_value</code> 로 지정된 가짜 데이터를 리턴한다.</li>
+</ol>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># test_views.py</span></span><br><span class="line"><span class="meta">@patch(<span class="params"><span class="string">&#x27;example_api.client.ExampleAPI.get&#x27;</span></span>)</span></span><br><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">test_example_view_404</span>(<span class="params">self, mock_example</span>):</span></span><br><span class="line">    mock_example.side_effect = Exception(<span class="string">&#x27;Error!&#x27;</span>)</span><br><span class="line"></span><br><span class="line">    self.assertEqual(status.HTTP_404_NOT_FOUND, response.status_code)</span><br></pre></td></tr></table></figure>
+<ol start="4">
+<li><code>mock_example.side_effect = Exception(&#39;Error!&#39;)</code><br>테스트가 돌던 중 patch될 메서드로 지정한 <code>example_api.get()</code> 을 만났을 때, 어떤 값을 return 하는게 아니라, <code>Exception(&#39;Error!&#39;)</code> 익셉션을 raise 한다.<br>예외처리가 잘 되었는지 테스트할 때 유용하다.</li>
+</ol>
+<hr>
+<h4 id="오늘의-결론"><a href="#오늘의-결론" class="headerlink" title="오늘의 결론"></a>오늘의 결론</h4><p><code>Mock</code>객체의 속성을 잘 활용하자!</p>
+<ul>
+<li>반환 값 변경만 하면 될 때 : <code>return_value</code> 지정</li>
+<li>구현부 수정이 필요할 때 : <code>side_effect</code>에 커스텀 함수 지정</li>
+<li>예외처리 테스트가 필요할 때 : <code>side_effect</code> 에 Exception 클래스 지정</li>
+</ul>
+<hr>
+<blockquote>
+<p>Reference<br><a target="_blank" rel="noopener" href="https://python.flowdas.com/library/unittest.mock.html#unittest.mock.Mock.return_value">https://python.flowdas.com/library/unittest.mock.html#unittest.mock.Mock.return_value</a></p>
+</blockquote>
+
+                    
+                        
+
+
+                    
+                    
+                        <p>
+                            <a
+                                href="/2021/05/12/2/#post-footer"
+                                class="postShorten-excerpt_link link"
+                                aria-label=""
+                            >
+                                Comment and share
+                            </a>
+                        </p>
+                    
+                </div>
+            
+        </div>
+        
+    </article>
+    
+    
+    <article class="postShorten postShorten--thumbnailimg-bottom">
+        <div class="postShorten-wrap">
+            
+            <div class="postShorten-header">
+                <h1 class="postShorten-title">
+                    
+                        <a
+                            class="link-unstyled"
                             href="/2021/04/14/1/"
                             aria-label=": [Django] 필요한 필드만 골라서 조회하기 values(), values_list(), only()"
                         >
