@@ -1,0 +1,643 @@
+
+<!DOCTYPE html>
+<html lang="en">
+    
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="generator" content="Everyday Sonni Day :)">
+    <title>[Django] Authentication 인증부를 구현하기 위해 알아야 할 것들 - Everyday Sonni Day :)</title>
+    <meta name="author" content="Soeun Shim">
+    
+    
+    
+    <script type="application/ld+json">{"@context":"http://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Soeun Shim","sameAs":[],"image":"soeun_profile.jpeg"},"articleBody":"Authentication은 요청을 보낼 때 인증된 사용자나 Token 인지를 식별하는 역할을 한다. DRF에서 제공하고있는 인증 클래스를 이용하면 인증부를 구현할 수 있는데, 가장 기본적인 클래스는 BaseAuthentication 이 있다.\nBaseAuthentication은 사용자의 username과 password를 기반으로 한 인증이기 때문에 가장 기본적이며, 보통 테스트 환경에서 적합한 인증 방법이다. 상용 환경에서 BaseAuthentication를 단독으로 사용하려면 API를 https를 통해서만 사용할 수 있는지, 항상 username/password 를 함께 요청할 수 있는지에 대한 고려가 필요하다.\n따라서 보통은, 간단하게 Token 기반의 인증을 할 수 있는 TokenAuthentication을 사용한다.TokenAuthentication 은 BaseAuthentication을 상속받아 구현이 되어있으며, 이번에는 TokenAuthentication을 이용하여 인증부를 구현할때 알아야 할 것들에 대해서 작성해본다.\n기본적인 Authentication 클래스 DRF 설정에 관련한 설명은 아래 DRF 공식문서로 대체한다.\n\nAuthentication 설정하기 : DRF 공식문서\n\n\n1. Token ModelTokenAuthentication 인증 클래스를 사용하려면 토큰 정보를 저장할 테이블이 필요하다. Token Model은 직접 구성하여 사용할 수도 있고, DRF의 rest_framework.authtoken APP을 추가하여 사용할 수도 있다. (django migration을 제공한다.)\nToken 의 주된 필드는 key 와 user 이다.\n\nkey : Token 의 PK 이며, 인증에 사용되는 토큰 키다.\nuser : 해당 key 를 발급 받을 user를 말한다.\nsettings 파일에서 AUTH_USER_MODEL 에 User Model 을 지정하여 사용한다.\n\n\n\n따라서 사용자의 Token 발급이 필요하다면\n1token = Token.objects.create(user=...)\n으로 Token을 생성하고, token.key 값을 이용하여 인증을 시도한다.\n2. .authenticate() 알아보기Authentication 인증 클래스의 핵심 메서드이다.만약 인증 로직을 커스텀 하고 싶다면 .authenticate() 를 Override 하여 사용한다. 해당 메서드는 커스텀이 되더라도 아래 몇가지 기본적인 틀을 갖추고 있어야한다.\n\n인증이 성공하면 (user, auth) 형태의 Tuple을 return 해야한다.\n\n인증에 시도했지만 실패하는 경우에는 AuthenticationFailed Exception 을 raise 하거나, None 을 return 해야한다.\n\n인증이 아예 시도되지 않은 경우라면, None을 반환한다.\n\n사용중인 다른 Authentication 인증 Class 로직을 탈 수 있어야 하기 때문이다. (Authentication은 다수개 지정이 가능하다.)\n\n3번째 항목에서 알 수 있겠지만, .authenticate() 에서는 인증을 시도하지 않은 경우에 대한 예외처리가 되지 않는다. 이는 인증(authenticate)의 영역이 아니라, 권한(permission)의 영역이기 때문이다. 이에 대한 예외처리를 하기 위해서는 rest_framework에서 제공하는 IsAuthenticated Permission 을 사용한다.\n1permission_classes = [IsAuthenticated]\nIsAuthenticated Permission 은 인증된 유저가 존재하지 않을 경우 Exception을 낸다. Permission 이라 403 Forbidden 응답을 낼 것 같지만, rest_framework 내부에서 인증되지 않는 경우를 분기처리하여 401 UnAuthorized 응답을 내린다.\n12345# rest_framework/permissions.pydef permission_denied(self, request, message=None):   if request.authenticators and not request.successful_authenticator:       raise exceptions.NotAuthenticated()   raise exceptions.PermissionDenied(detail=message)\n\n\n\n3. TokenAuthentication의 .authenticate()TokenAuthentication 에서는 기본적으로 HTTP header 에 담겨온 AUTHORIZATION 키를 검증한다.그리고 값으로는 공백이 붙은 ‘Token ‘ 키워드로 시작하는지를 검증한다.\n그러니까 클라이언트에서는\n1Authorization: Token 9944b09199c62bcf9418ad846dd0e4bbdfc6ee4b\n이런 형태로 인증을 요청 해야한다.\n여기서, AUTHORIZATION 키를 변경하고 싶다면\n123456# rest_framework/authentication.pydef get_authorization_header(request):    auth = request.META.get(&#x27;HTTP_AUTHORIZATION&#x27;, b&#x27;&#x27;)    if isinstance(auth, str):        auth = auth.encode(HTTP_HEADER_ENCODING)    return auth\n위의 get_authorization_header() 를 Override 하면 되고,\n‘Token ‘ 키워드를 변경하고 싶다면\n1234# rest_framework/authentication.pyclass TokenAuthentication(BaseAuthentication):    keyword = &#x27;Token&#x27;    ...\n위의 keyword 클래스 변수를 원하는 값으로 지정하면 된다.보통 ‘Token’ 키워드 외에는 ‘Bearer’ 키워드를 사용한다.\n.authenticate() 에서는 공백을 기준으로 keyword와 Token key 를 나눠서 값을 검증한다.\n\nkeyword : 클래스 변수로 지정된 keword 값과 일치하는지 검증\ne.g. Token\n\n\nToken key : Tokne 테이블을 조회하여 해당 key 를 가지고 있는 User가 존재하는지 검증\ne.g. 9944b09199c62bcf9418ad846dd0e4bbdfc6ee4b\n\n\n\n검증에 통과한다면 위에서 설명한 것 처럼 (user, auth) 형태의 튜플을 return 한다.\n\nuser : AUTH_USER_MODEL 으로 지정했던 User 모델이 담긴다.\nauth : 인증을 시도한 Key를 PK로 가진 Token 모델이 담긴다.\n\n그리고 해당 정보들은 perform_authentication() 시점에 호출되는 _authenticate()에서 인증에 통과할 경우 실행되는 로직에 따라request.user와 request.auth 로 담기기 때문에 view 에서는 언제든지 인증된 사용자 정보와 Token 에 접근할 수 있게 된다.\n123456789101112131415#rest_framework/request.pydef _authenticate(self):    for authenticator in self.authenticators:        try:            user_auth_tuple = authenticator.authenticate(self)        except exceptions.APIException:            self._not_authenticated()            raise        if user_auth_tuple is not None:            self._authenticator = authenticator            self.user, self.auth = user_auth_tuple            return    self._not_authenticated()\n\n오늘의 결론!인증과 권한은 다르다.인증은 단순히 ‘식별’ 하는 역할만 할 뿐이다.\n\n\nReferencehttps://www.django-rest-framework.org/api-guide/authentication/#tokenauthenticationhttps://www.django-rest-framework.org/api-guide/authentication/#authentication\n\n","dateCreated":"2021-10-13T18:56:44+09:00","dateModified":"2021-10-13T22:10:23+09:00","datePublished":"2021-10-13T18:56:44+09:00","description":"","headline":"[Django] Authentication 인증부를 구현하기 위해 알아야 할 것들","image":[],"mainEntityOfPage":{"@type":"WebPage","@id":"https://sonniday.github.io/2021/10/13/5/"},"publisher":{"@type":"Organization","name":"Soeun Shim","sameAs":[],"image":"soeun_profile.jpeg","logo":{"@type":"ImageObject","url":"soeun_profile.jpeg"}},"url":"https://sonniday.github.io/2021/10/13/5/","keywords":"Django"}</script>
+    <meta name="description" content="Authentication은 요청을 보낼 때 인증된 사용자나 Token 인지를 식별하는 역할을 한다. DRF에서 제공하고있는 인증 클래스를 이용하면 인증부를 구현할 수 있는데, 가장 기본적인 클래스는 BaseAuthentication 이 있다. BaseAuthentication은 사용자의 username과 password를 기반으로 한 인증이기 때문에 가장">
+<meta property="og:type" content="blog">
+<meta property="og:title" content="[Django] Authentication 인증부를 구현하기 위해 알아야 할 것들">
+<meta property="og:url" content="https://sonniday.github.io/2021/10/13/5/index.html">
+<meta property="og:site_name" content="Everyday Sonni Day :)">
+<meta property="og:description" content="Authentication은 요청을 보낼 때 인증된 사용자나 Token 인지를 식별하는 역할을 한다. DRF에서 제공하고있는 인증 클래스를 이용하면 인증부를 구현할 수 있는데, 가장 기본적인 클래스는 BaseAuthentication 이 있다. BaseAuthentication은 사용자의 username과 password를 기반으로 한 인증이기 때문에 가장">
+<meta property="og:locale" content="en_US">
+<meta property="article:published_time" content="2021-10-13T09:56:44.000Z">
+<meta property="article:modified_time" content="2021-10-13T13:10:23.416Z">
+<meta property="article:author" content="Soeun Shim">
+<meta property="article:tag" content="Django">
+<meta name="twitter:card" content="summary">
+    
+    
+        
+    
+    
+        <meta property="og:image" content="https://sonniday.github.io/assets/images/soeun_profile.jpeg"/>
+    
+    
+    
+    
+    <!--STYLES-->
+    
+<link rel="stylesheet" href="/assets/css/all.css">
+
+    
+<link rel="stylesheet" href="/assets/css/jquery.fancybox.css">
+
+    
+<link rel="stylesheet" href="/assets/css/thumbs.css">
+
+    
+<link rel="stylesheet" href="/assets/css/tranquilpeak.css">
+
+    <!--STYLES END-->
+    
+
+    
+
+    
+        
+    
+</head>
+
+    <body>
+        <div id="blog">
+            <!-- Define author's picture -->
+
+
+    
+        
+            
+        
+    
+
+<header id="header" data-behavior="4">
+    <i id="btn-open-sidebar" class="fa fa-lg fa-bars"></i>
+    <div class="header-title">
+        <a
+            class="header-title-link"
+            href="/"
+            aria-label=""
+        >
+            Everyday Sonni Day :)
+        </a>
+    </div>
+    
+        
+            <a
+                class="header-right-picture "
+                href="#about"
+                aria-label="Open the link: /#about"
+            >
+        
+        
+            <img class="header-picture" src="/assets/images/soeun_profile.jpeg" alt="Author&#39;s picture"/>
+        
+        </a>
+    
+</header>
+
+            <!-- Define author's picture -->
+
+
+
+        
+    
+
+<nav id="sidebar" data-behavior="4">
+    <div class="sidebar-container">
+        
+            <div class="sidebar-profile">
+                <a
+                    href="/#about"
+                    aria-label="Read more about the author"
+                >
+                    <img class="sidebar-profile-picture" src="/assets/images/soeun_profile.jpeg" alt="Author&#39;s picture"/>
+                </a>
+                <h4 class="sidebar-profile-name">Soeun Shim</h4>
+                
+                    <h5 class="sidebar-profile-bio"><p>My Tech Diary</p>
+</h5>
+                
+            </div>
+        
+        
+            <ul class="sidebar-buttons">
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="/"
+                            
+                            rel="noopener"
+                            title="Home"
+                        >
+                        <i class="sidebar-button-icon fa fa-home" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Home</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="/all-categories"
+                            
+                            rel="noopener"
+                            title="Categories"
+                        >
+                        <i class="sidebar-button-icon fa fa-bookmark" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Categories</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="/all-tags"
+                            
+                            rel="noopener"
+                            title="Tags"
+                        >
+                        <i class="sidebar-button-icon fa fa-tags" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Tags</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="/all-archives"
+                            
+                            rel="noopener"
+                            title="Archives"
+                        >
+                        <i class="sidebar-button-icon fa fa-archive" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Archives</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="#about"
+                            
+                            rel="noopener"
+                            title="About"
+                        >
+                        <i class="sidebar-button-icon fa fa-question" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">About</span>
+                    </a>
+            </li>
+            
+        </ul>
+        
+    </div>
+</nav>
+
+            
+            <div id="main" data-behavior="4"
+                 class="
+                        hasCoverMetaIn
+                        ">
+                
+<article class="post">
+    
+    
+        <div class="post-header main-content-wrap text-left">
+    
+        <h1 class="post-title">
+            [Django] Authentication 인증부를 구현하기 위해 알아야 할 것들
+        </h1>
+    
+    
+        <div class="post-meta">
+    <time datetime="2021-10-13T18:56:44+09:00">
+	
+		    Oct 13, 2021
+    	
+    </time>
+    
+        <span>in </span>
+        
+    <a class="category-link" href="/categories/Django/">Django</a>, <a class="category-link" href="/categories/Django/Authenticate/">Authenticate</a>
+
+
+    
+</div>
+
+    
+</div>
+
+    
+    <div class="post-content markdown">
+        <div class="main-content-wrap">
+            <p>Authentication은 요청을 보낼 때 인증된 사용자나 Token 인지를 식별하는 역할을 한다. DRF에서 제공하고있는 인증 클래스를 이용하면 인증부를 구현할 수 있는데, 가장 기본적인 클래스는 BaseAuthentication 이 있다.</p>
+<p>BaseAuthentication은 사용자의 username과 password를 기반으로 한 인증이기 때문에 가장 기본적이며, 보통 테스트 환경에서 적합한 인증 방법이다. 상용 환경에서 BaseAuthentication를 단독으로 사용하려면 API를 https를 통해서만 사용할 수 있는지, 항상 username/password 를 함께 요청할 수 있는지에 대한 고려가 필요하다.</p>
+<p>따라서 보통은, 간단하게 Token 기반의 인증을 할 수 있는 TokenAuthentication을 사용한다.<br>TokenAuthentication 은 BaseAuthentication을 상속받아 구현이 되어있으며, 이번에는 TokenAuthentication을 이용하여 인증부를 구현할때 알아야 할 것들에 대해서 작성해본다.</p>
+<p>기본적인 Authentication 클래스 DRF 설정에 관련한 설명은 아래 DRF 공식문서로 대체한다.</p>
+<ul>
+<li>Authentication 설정하기 : <a target="_blank" rel="noopener" href="https://www.django-rest-framework.org/api-guide/authentication/#setting-the-authentication-scheme">DRF 공식문서</a></li>
+</ul>
+<hr>
+<h2 id="1-Token-Model"><a href="#1-Token-Model" class="headerlink" title="1. Token Model"></a>1. Token Model</h2><p>TokenAuthentication 인증 클래스를 사용하려면 토큰 정보를 저장할 테이블이 필요하다. <code>Token</code> Model은 직접 구성하여 사용할 수도 있고, DRF의 <code>rest_framework.authtoken</code> APP을 추가하여 사용할 수도 있다. (django migration을 제공한다.)</p>
+<p><code>Token</code> 의 주된 필드는 <code>key</code> 와 <code>user</code> 이다.</p>
+<ul>
+<li><code>key</code> : Token 의 PK 이며, 인증에 사용되는 토큰 키다.</li>
+<li><code>user</code> : 해당 key 를 발급 받을 user를 말한다.<ul>
+<li>settings 파일에서 <code>AUTH_USER_MODEL</code> 에 User Model 을 지정하여 사용한다.</li>
+</ul>
+</li>
+</ul>
+<p>따라서 사용자의 Token 발급이 필요하다면</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">token = Token.objects.create(user=...)</span><br></pre></td></tr></table></figure>
+<p>으로 Token을 생성하고, token.key 값을 이용하여 인증을 시도한다.</p>
+<h2 id="2-authenticate-알아보기"><a href="#2-authenticate-알아보기" class="headerlink" title="2. .authenticate() 알아보기"></a>2. .authenticate() 알아보기</h2><p>Authentication 인증 클래스의 핵심 메서드이다.<br>만약 인증 로직을 커스텀 하고 싶다면 <code>.authenticate()</code> 를 Override 하여 사용한다. 해당 메서드는 커스텀이 되더라도 아래 몇가지 기본적인 틀을 갖추고 있어야한다.</p>
+<ul>
+<li><p>인증이 성공하면 <code>(user, auth)</code> 형태의 Tuple을 return 해야한다.</p>
+</li>
+<li><p>인증에 시도했지만 실패하는 경우에는 <code>AuthenticationFailed</code> Exception 을 raise 하거나, <code>None</code> 을 return 해야한다.</p>
+</li>
+<li><p>인증이 아예 시도되지 않은 경우라면, <code>None</code>을 반환한다.</p>
+<ul>
+<li>사용중인 다른 Authentication 인증 Class 로직을 탈 수 있어야 하기 때문이다. (Authentication은 다수개 지정이 가능하다.)</li>
+</ul>
+<p>3번째 항목에서 알 수 있겠지만, <code>.authenticate()</code> 에서는 인증을 시도하지 않은 경우에 대한 예외처리가 되지 않는다. <strong>이는 인증(authenticate)의 영역이 아니라, 권한(permission)의 영역이기 때문이다.</strong> 이에 대한 예외처리를 하기 위해서는 rest_framework에서 제공하는 <code>IsAuthenticated</code> Permission 을 사용한다.</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">permission_classes = [IsAuthenticated]</span><br></pre></td></tr></table></figure>
+<p><code>IsAuthenticated</code> Permission 은 인증된 유저가 존재하지 않을 경우 Exception을 낸다. Permission 이라 <code>403 Forbidden</code> 응답을 낼 것 같지만, rest_framework 내부에서 인증되지 않는 경우를 분기처리하여 <code>401 UnAuthorized</code> 응답을 내린다.</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># rest_framework/permissions.py</span></span><br><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">permission_denied</span>(<span class="params">self, request, message=<span class="literal">None</span></span>):</span></span><br><span class="line">   <span class="keyword">if</span> request.authenticators <span class="keyword">and</span> <span class="keyword">not</span> request.successful_authenticator:</span><br><span class="line">       <span class="keyword">raise</span> exceptions.NotAuthenticated()</span><br><span class="line">   <span class="keyword">raise</span> exceptions.PermissionDenied(detail=message)</span><br></pre></td></tr></table></figure>
+
+</li>
+</ul>
+<h2 id="3-TokenAuthentication의-authenticate"><a href="#3-TokenAuthentication의-authenticate" class="headerlink" title="3. TokenAuthentication의 .authenticate()"></a>3. TokenAuthentication의 .authenticate()</h2><p>TokenAuthentication 에서는 기본적으로 HTTP header 에 담겨온 <code>AUTHORIZATION</code> 키를 검증한다.<br>그리고 값으로는 공백이 붙은 ‘Token ‘ 키워드로 시작하는지를 검증한다.</p>
+<p>그러니까 클라이언트에서는</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">Authorization: Token 9944b09199c62bcf9418ad846dd0e4bbdfc6ee4b</span><br></pre></td></tr></table></figure>
+<p>이런 형태로 인증을 요청 해야한다.</p>
+<p>여기서, <code>AUTHORIZATION</code> 키를 변경하고 싶다면</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># rest_framework/authentication.py</span></span><br><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">get_authorization_header</span>(<span class="params">request</span>):</span></span><br><span class="line">    auth = request.META.get(<span class="string">&#x27;HTTP_AUTHORIZATION&#x27;</span>, <span class="string">b&#x27;&#x27;</span>)</span><br><span class="line">    <span class="keyword">if</span> <span class="built_in">isinstance</span>(auth, <span class="built_in">str</span>):</span><br><span class="line">        auth = auth.encode(HTTP_HEADER_ENCODING)</span><br><span class="line">    <span class="keyword">return</span> auth</span><br></pre></td></tr></table></figure>
+<p>위의 <code>get_authorization_header()</code> 를 Override 하면 되고,</p>
+<p>‘Token ‘ 키워드를 변경하고 싶다면</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># rest_framework/authentication.py</span></span><br><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">TokenAuthentication</span>(<span class="params">BaseAuthentication</span>):</span></span><br><span class="line">    keyword = <span class="string">&#x27;Token&#x27;</span></span><br><span class="line">    ...</span><br></pre></td></tr></table></figure>
+<p>위의 <code>keyword</code> 클래스 변수를 원하는 값으로 지정하면 된다.<br>보통 ‘Token’ 키워드 외에는 ‘Bearer’ 키워드를 사용한다.</p>
+<p><code>.authenticate()</code> 에서는 공백을 기준으로 keyword와 Token key 를 나눠서 값을 검증한다.</p>
+<ul>
+<li>keyword : 클래스 변수로 지정된 keword 값과 일치하는지 검증<ul>
+<li>e.g. <code>Token</code></li>
+</ul>
+</li>
+<li>Token key : Tokne 테이블을 조회하여 해당 key 를 가지고 있는 User가 존재하는지 검증<ul>
+<li>e.g. <code>9944b09199c62bcf9418ad846dd0e4bbdfc6ee4b</code></li>
+</ul>
+</li>
+</ul>
+<p>검증에 통과한다면 위에서 설명한 것 처럼 <code>(user, auth)</code> 형태의 튜플을 return 한다.</p>
+<ul>
+<li>user : <code>AUTH_USER_MODEL</code> 으로 지정했던 <code>User</code> 모델이 담긴다.</li>
+<li>auth : 인증을 시도한 Key를 PK로 가진 <code>Token</code> 모델이 담긴다.</li>
+</ul>
+<p>그리고 해당 정보들은 <code>perform_authentication()</code> 시점에 호출되는 <code>_authenticate()</code>에서 인증에 통과할 경우 실행되는 로직에 따라<br><code>request.user</code>와 <code>request.auth</code> 로 담기기 때문에 view 에서는 언제든지 인증된 사용자 정보와 Token 에 접근할 수 있게 된다.</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">#rest_framework/request.py</span></span><br><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">_authenticate</span>(<span class="params">self</span>):</span></span><br><span class="line">    <span class="keyword">for</span> authenticator <span class="keyword">in</span> self.authenticators:</span><br><span class="line">        <span class="keyword">try</span>:</span><br><span class="line">            user_auth_tuple = authenticator.authenticate(self)</span><br><span class="line">        <span class="keyword">except</span> exceptions.APIException:</span><br><span class="line">            self._not_authenticated()</span><br><span class="line">            <span class="keyword">raise</span></span><br><span class="line"></span><br><span class="line">        <span class="keyword">if</span> user_auth_tuple <span class="keyword">is</span> <span class="keyword">not</span> <span class="literal">None</span>:</span><br><span class="line">            self._authenticator = authenticator</span><br><span class="line">            self.user, self.auth = user_auth_tuple</span><br><span class="line">            <span class="keyword">return</span></span><br><span class="line"></span><br><span class="line">    self._not_authenticated()</span><br></pre></td></tr></table></figure>
+<hr>
+<h4 id="오늘의-결론"><a href="#오늘의-결론" class="headerlink" title="오늘의 결론!"></a>오늘의 결론!</h4><p>인증과 권한은 다르다.<br>인증은 단순히 ‘식별’ 하는 역할만 할 뿐이다.</p>
+<hr>
+<blockquote>
+<p>Reference<br><a target="_blank" rel="noopener" href="https://www.django-rest-framework.org/api-guide/authentication/#tokenauthentication">https://www.django-rest-framework.org/api-guide/authentication/#tokenauthentication</a><br><a target="_blank" rel="noopener" href="https://www.django-rest-framework.org/api-guide/authentication/#authentication">https://www.django-rest-framework.org/api-guide/authentication/#authentication</a></p>
+</blockquote>
+
+            
+
+
+        </div>
+    </div>
+    <div id="post-footer" class="post-footer main-content-wrap">
+        
+            <div class="post-footer-tags">
+                <span class="text-color-light text-small">TAGGED IN</span><br/>
+                
+    <a class="tag tag--primary tag--small t-none-link" href="/tags/Django/" rel="tag">Django</a>
+
+            </div>
+        
+        
+            <div class="post-actions-wrap">
+    <nav>
+        <ul class="post-actions post-action-nav">
+            <li class="post-action">
+                
+                    <a
+                        class="post-action-btn btn btn--disabled"
+                        aria-hidden="true"
+                    >
+                        
+                        <i class="fa fa-angle-left" aria-hidden="true"></i>
+                        <span class="hide-xs hide-sm text-small icon-ml">PREVIOUS</span>
+                    </a>
+            </li>
+            <li class="post-action">
+                
+                    
+                <a
+                    class="post-action-btn btn btn--default tooltip--top"
+                    href="/2021/09/08/4/"
+                    data-tooltip="[MySQL] Explain 실행계획"
+                    aria-label="NEXT: [MySQL] Explain 실행계획"
+                >
+                    
+                        <span class="hide-xs hide-sm text-small icon-mr">NEXT</span>
+                        <i class="fa fa-angle-right" aria-hidden="true"></i>
+                    </a>
+            </li>
+        </ul>
+    </nav>
+    <ul class="post-actions post-action-share">
+        <li class="post-action hide-lg hide-md hide-sm">
+            <a
+                class="post-action-btn btn btn--default btn-open-shareoptions"
+                href="#btn-open-shareoptions"
+                aria-label="Share this post"
+            >
+                <i class="fa fa-share-alt" aria-hidden="true"></i>
+            </a>
+        </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="https://www.facebook.com/sharer/sharer.php?u=https://sonniday.github.io/2021/10/13/5/"
+                    title="Share on Facebook"
+                    aria-label="Share on Facebook"
+                >
+                    <i class="fab fa-facebook" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="https://twitter.com/intent/tweet?text=https://sonniday.github.io/2021/10/13/5/"
+                    title="Share on Twitter"
+                    aria-label="Share on Twitter"
+                >
+                    <i class="fab fa-twitter" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="https://plus.google.com/share?url=https://sonniday.github.io/2021/10/13/5/"
+                    title="Share on Google+"
+                    aria-label="Share on Google+"
+                >
+                    <i class="fab fa-google-plus" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+        
+            
+        
+        <li class="post-action">
+            
+                <a class="post-action-btn btn btn--default" href="#" aria-label="Back to top">
+            
+                <i class="fa fa-list" aria-hidden="true"></i>
+            </a>
+        </li>
+    </ul>
+</div>
+
+
+        
+        
+            
+        
+    </div>
+</article>
+
+
+
+                <footer id="footer" class="main-content-wrap">
+    <span class="copyrights">
+        Copyrights &copy; 2021 Soeun Shim. All Rights Reserved.
+    </span>
+</footer>
+
+            </div>
+            
+                <div id="bottom-bar" class="post-bottom-bar" data-behavior="4">
+                    <div class="post-actions-wrap">
+    <nav>
+        <ul class="post-actions post-action-nav">
+            <li class="post-action">
+                
+                    <a
+                        class="post-action-btn btn btn--disabled"
+                        aria-hidden="true"
+                    >
+                        
+                        <i class="fa fa-angle-left" aria-hidden="true"></i>
+                        <span class="hide-xs hide-sm text-small icon-ml">PREVIOUS</span>
+                    </a>
+            </li>
+            <li class="post-action">
+                
+                    
+                <a
+                    class="post-action-btn btn btn--default tooltip--top"
+                    href="/2021/09/08/4/"
+                    data-tooltip="[MySQL] Explain 실행계획"
+                    aria-label="NEXT: [MySQL] Explain 실행계획"
+                >
+                    
+                        <span class="hide-xs hide-sm text-small icon-mr">NEXT</span>
+                        <i class="fa fa-angle-right" aria-hidden="true"></i>
+                    </a>
+            </li>
+        </ul>
+    </nav>
+    <ul class="post-actions post-action-share">
+        <li class="post-action hide-lg hide-md hide-sm">
+            <a
+                class="post-action-btn btn btn--default btn-open-shareoptions"
+                href="#btn-open-shareoptions"
+                aria-label="Share this post"
+            >
+                <i class="fa fa-share-alt" aria-hidden="true"></i>
+            </a>
+        </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="https://www.facebook.com/sharer/sharer.php?u=https://sonniday.github.io/2021/10/13/5/"
+                    title="Share on Facebook"
+                    aria-label="Share on Facebook"
+                >
+                    <i class="fab fa-facebook" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="https://twitter.com/intent/tweet?text=https://sonniday.github.io/2021/10/13/5/"
+                    title="Share on Twitter"
+                    aria-label="Share on Twitter"
+                >
+                    <i class="fab fa-twitter" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="https://plus.google.com/share?url=https://sonniday.github.io/2021/10/13/5/"
+                    title="Share on Google+"
+                    aria-label="Share on Google+"
+                >
+                    <i class="fab fa-google-plus" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+        
+            
+        
+        <li class="post-action">
+            
+                <a class="post-action-btn btn btn--default" href="#" aria-label="Back to top">
+            
+                <i class="fa fa-list" aria-hidden="true"></i>
+            </a>
+        </li>
+    </ul>
+</div>
+
+
+                </div>
+                
+    <div id="share-options-bar" class="share-options-bar" data-behavior="4">
+        <i id="btn-close-shareoptions" class="fa fa-times"></i>
+        <ul class="share-options">
+            
+                
+                
+                <li class="share-option">
+                    <a
+                        class="share-option-btn"
+                        target="new"
+                        href="https://www.facebook.com/sharer/sharer.php?u=https://sonniday.github.io/2021/10/13/5/"
+                        aria-label="Share on Facebook"
+                    >
+                        <i class="fab fa-facebook" aria-hidden="true"></i><span>Share on Facebook</span>
+                    </a>
+                </li>
+            
+                
+                
+                <li class="share-option">
+                    <a
+                        class="share-option-btn"
+                        target="new"
+                        href="https://twitter.com/intent/tweet?text=https://sonniday.github.io/2021/10/13/5/"
+                        aria-label="Share on Twitter"
+                    >
+                        <i class="fab fa-twitter" aria-hidden="true"></i><span>Share on Twitter</span>
+                    </a>
+                </li>
+            
+                
+                
+                <li class="share-option">
+                    <a
+                        class="share-option-btn"
+                        target="new"
+                        href="https://plus.google.com/share?url=https://sonniday.github.io/2021/10/13/5/"
+                        aria-label="Share on Google+"
+                    >
+                        <i class="fab fa-google-plus" aria-hidden="true"></i><span>Share on Google+</span>
+                    </a>
+                </li>
+            
+        </ul>
+    </div>
+
+
+            
+        </div>
+        
+
+
+    
+        
+    
+
+<div id="about">
+    <div id="about-card">
+        <div id="about-btn-close">
+            <i class="fa fa-times"></i>
+        </div>
+        
+            <img id="about-card-picture" src="/assets/images/soeun_profile.jpeg" alt="Author&#39;s picture"/>
+        
+            <h4 id="about-card-name">Soeun Shim</h4>
+        
+            <div id="about-card-bio"><p>My Tech Diary</p>
+</div>
+        
+        
+            <div id="about-card-job">
+                <i class="fa fa-briefcase"></i>
+                <br/>
+                <p>Software Engineer</p>
+
+            </div>
+        
+        
+            <div id="about-card-location">
+                <i class="fa fa-map-marker-alt"></i>
+                <br/>
+                South Korea / Seoul
+            </div>
+        
+    </div>
+</div>
+
+        
+        
+<div id="cover" style="background-image:url('/assets/images/cover.jpg');"></div>
+        <!--SCRIPTS-->
+
+<script src="/assets/js/jquery.js"></script>
+
+
+<script src="/assets/js/jquery.fancybox.js"></script>
+
+
+<script src="/assets/js/thumbs.js"></script>
+
+
+<script src="/assets/js/tranquilpeak.js"></script>
+
+<!--SCRIPTS END-->
+
+
+    
+
+
+
+
+    </body>
+</html>
