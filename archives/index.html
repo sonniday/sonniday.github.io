@@ -206,6 +206,87 @@
                     
                         <a
                             class="link-unstyled"
+                            href="/2022/01/12/7/"
+                            aria-label=": [Django] Queryset prefetch_related() 주의점! (feat. to_attr)"
+                        >
+                            [Django] Queryset prefetch_related() 주의점! (feat. to_attr)
+                        </a>
+                    
+                </h1>
+                <div class="postShorten-meta">
+    <time datetime="2022-01-12T19:30:03+09:00">
+	
+		    Jan 12, 2022
+    	
+    </time>
+    
+        <span>in </span>
+        
+    <a class="category-link" href="/categories/Django/">Django</a>
+
+
+    
+</div>
+
+            </div>
+            
+                <div class="postShorten-content">
+                    <p>오늘은 <code>prefetch_related()</code> 에 대해서 간략하게 소개를 하고 주의점에 대해서 작성을 해보려 한다.</p>
+<hr>
+<h2 id="prefetch-related"><a href="#prefetch-related" class="headerlink" title="prefetch_related ?"></a>prefetch_related ?</h2><p>prefetch_related 는 select_related 에서 지원하는 foreign key, one-to-one 관계 뿐만 아니라 many-to-one, many-to-many 관계를 지원한다. prefetch_related를 사용하면 모델 필드에 접근할 때마다 쿼리하는 것을 방지하고 미리 가져온 data 를 Cache 에 저장하여 재사용할 수 있도록 한다. select_related 는 main query 에 Join 을 하여 가져오는 방식이기 때문에 1번의 쿼리를 호출 하지만, prefetch_related 의 경우 main query 가 호출된 이후 별도의 query 가 실행됨으로 불필요한 쿼리가 호출되는 일 없게 ‘잘’ 사용하는 것이 중요하다.</p>
+<p>아래와 같은 관계의 Model 이 있다고 가정하자.</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">Teacher</span>(<span class="params">models.Model</span>):</span></span><br><span class="line">    teacher_index = models.AutoField(primary_key=<span class="literal">True</span>)</span><br><span class="line">    ...</span><br><span class="line"></span><br><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">TeacherStuendtMap</span>(<span class="params">models.Model</span>):</span></span><br><span class="line">    teacher_student_map_index = models.AutoField(primary_key=<span class="literal">True</span>)</span><br><span class="line">    teacher_index = models.ForeignKey(Teacher, related_name=<span class="string">&quot;teacher_student_map&quot;</span>)</span><br><span class="line">    student_index = models.ForeignKey(Student)</span><br><span class="line"></span><br><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">Student</span>(<span class="params">models.Model</span>):</span></span><br><span class="line">    student_index = models.AutoField(primary_key=<span class="literal">True</span>)</span><br><span class="line">    student_name = models.CharField()</span><br><span class="line">    student_age = models.IntegerField()</span><br><span class="line">    student_phone = models.CharField()</span><br></pre></td></tr></table></figure>
+<p>우리는 <code>Teacher</code> 로 부터 연결된 <code>Student</code> 의 정보를 찾고 싶은 상황이다. <code>Teacher</code> 모델 객체로부터 ‘teacher_student_map’ 라고 지정된 related_name 을 이용해 역참조 하여 <code>TeacherStuendtMap</code> 모델을 찾아내고, <code>TeacherStuendtMap</code> 모델에서 정참조하여 <code>Student</code> 모델에 접근할 예정이다.</p>
+<p>아래와 같은 ModelSerializer 를 구현하자.</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">TeacherStuendtInfoSerializer</span>(<span class="params">ModelSerializer</span>):</span></span><br><span class="line"></span><br><span class="line">    student_name = SerializerMethodField()</span><br><span class="line">    student_age = SerializerMethodField()</span><br><span class="line">    student_phone = SerializerMethodField()</span><br><span class="line"></span><br><span class="line">    <span class="class"><span class="keyword">class</span> <span class="title">Meta</span>:</span></span><br><span class="line">        model = Teacher</span><br><span class="line">        fields = [<span class="string">&#x27;teacher_index&#x27;</span>,<span class="string">&#x27;teacher_name&#x27;</span>,<span class="string">&#x27;teacher_subject&#x27;</span>,</span><br><span class="line">                         <span class="string">&#x27;student_name&#x27;</span>,<span class="string">&#x27;student_age&#x27;</span>,<span class="string">&#x27;student_phone&#x27;</span>  ]</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">def</span> <span class="title">get_student_name</span>(<span class="params">self, obj</span>):</span></span><br><span class="line">        teacher_student_map = obj.teacher_student_map.<span class="built_in">all</span>()</span><br><span class="line"></span><br><span class="line">        <span class="keyword">return</span> teacher_student_map[<span class="number">0</span>].student_index.student_name</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">def</span> <span class="title">get_student_age</span>(<span class="params">self, obj</span>):</span></span><br><span class="line">        teacher_student_map = obj.teacher_student_map.<span class="built_in">all</span>()</span><br><span class="line"></span><br><span class="line">        <span class="keyword">return</span> teacher_student_map[<span class="number">0</span>].student_index.student_age</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">def</span> <span class="title">get_student_phone</span>(<span class="params">self, obj</span>):</span></span><br><span class="line">        teacher_student_map = obj.teacher_student_map.<span class="built_in">all</span>()</span><br><span class="line"></span><br><span class="line">        <span class="keyword">return</span> teacher_student_map[<span class="number">0</span>].student_index.student_phone</span><br></pre></td></tr></table></figure>
+<p>참고로 역참조시 사용되는 related_name 은 RelatedManager 이므로 <code>.all()</code> 과 같은 별도의 쿼리셋이 있어야 역참조 모델 필드에 접근이 가능하다.</p>
+<p><code>TeacherStuendtInfoSerializer</code> 에 아래와 같은 기본 쿼리셋을 넘기게 되면</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">queryset = Teacher.objects.<span class="built_in">all</span>()</span><br><span class="line">serializer = TeacherStuendtInfoSerializer(queryset, many=<span class="literal">True</span>)</span><br></pre></td></tr></table></figure>
+<p>Teacher Main query 1번, Teacher &lt;-&gt; Student 관계를 찾기 위한 쿼리 1번, student_name/student_age/student_phone 를 찾기위한 쿼리 3번 하여 총 5번 의 쿼리를 호출하게 된다.</p>
+<p>이때, prefetch_related 와 select_related 를 사용하면 역참조 혹은 정참조 모델의 필드 접근시 미리 가져온 값을 사용할 수 있기 때문에 Main query 한번, prefetch_related query 1번 하여 총 2번의 쿼리를 호출하게 된다.<br>쿼리셋은 아래와 같다.</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">queryset = Teacher.objects.prefetch_related(</span><br><span class="line">            Prefetch(<span class="string">&#x27;teacher_student_map&#x27;</span></span><br><span class="line">            ,queryset=models.TeacherStuendtMap.objects.select_related(<span class="string">&#x27;student_index&#x27;</span>)))</span><br><span class="line"></span><br><span class="line">serializer = TeacherStuendtInfoSerializer(queryset, many=<span class="literal">True</span>)</span><br></pre></td></tr></table></figure>
+<p>이때 주의할 점이 있다.<br>prefetch_related 는 one-to-one 관계 뿐만아니라 many-to-one, many-to-many 관계의 개체도 미리 가져올 수 있기 때문에, 역참조 관계의 모든 항목을 가져오게 되어있다.<br><strong>그러니까, <code>prefetch_related()</code> 시에는 <code>.all()</code> 을 한다는 것!</strong></p>
+<p><strong>그래서 만약 prefetch_related 로 잘 엮어두고서 값을 미리 가져왔겠지~ 하고 아래처럼 serializer 에서 <code>.filter()</code> 나 <code>.get()</code> 등을 사용하면 prefetch_related 로 가져온 값을 사용하지 않고 추가적으로 새로운 쿼리를 호출하게된다.</strong></p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">get_student_name</span>(<span class="params">self, obj</span>):</span></span><br><span class="line">    teacher_student_map = obj.teacher_student_map.get(teacher_student_map_index=obj.pk)</span><br><span class="line"></span><br><span class="line">    <span class="keyword">return</span> teacher_student_map[<span class="number">0</span>].student_index.student_name</span><br></pre></td></tr></table></figure>
+<p>그러면 매번 prefetch_related 한 모델에 all() 로 접근을 해야할까? 아니다!</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">queryset = Teacher.objects.prefetch_related(</span><br><span class="line">            Prefetch(<span class="string">&#x27;teacher_student_map&#x27;</span></span><br><span class="line">            ,queryset=models.TeacherStuendtMap.objects.select_related(<span class="string">&#x27;student_index&#x27;</span>)</span><br><span class="line">            ,to_attr=<span class="string">&#x27;teacher_student_map_items&#x27;</span>))</span><br></pre></td></tr></table></figure>
+<p>위처럼 <code>to_attr</code> 를 이용하면 <code>teacher_student_map.all()</code> 의 결과를  ‘teacher_student_map_items’ 에 담아두고 사용할 수 있다.<br>그럼 매번 <code>.all()</code> 로 접근하지 않고 <code>teacher_student_map_items</code> 에 바로 접근하여 사용할 수 있다.</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">get_student_name</span>(<span class="params">self, obj</span>):</span></span><br><span class="line">    <span class="keyword">return</span> teacher_student_map_items[<span class="number">0</span>].student_index.student_name</span><br></pre></td></tr></table></figure>
+<hr>
+<h4 id="오늘의-결론"><a href="#오늘의-결론" class="headerlink" title="오늘의 결론!"></a>오늘의 결론!</h4><p>prefetch_related 는 다량의 쿼리 호출을 방지할 수 있는 강력한 쿼리셋이다. 다만 개념을 잘 이해하고 사용시에 실제 호출되는 쿼리를 확인해보면서 불필요한 쿼리가 호출되는 부분이 없는지 확인해보자.</p>
+<hr>
+
+                    
+                        
+
+
+                    
+                    
+                        <p>
+                            <a
+                                href="/2022/01/12/7/#post-footer"
+                                class="postShorten-excerpt_link link"
+                                aria-label=""
+                            >
+                                Comment and share
+                            </a>
+                        </p>
+                    
+                </div>
+            
+        </div>
+        
+    </article>
+    
+    
+    <article class="postShorten postShorten--thumbnailimg-bottom">
+        <div class="postShorten-wrap">
+            
+            <div class="postShorten-header">
+                <h1 class="postShorten-title">
+                    
+                        <a
+                            class="link-unstyled"
                             href="/2021/11/10/6/"
                             aria-label=": [Django] Serailizer의 partial"
                         >
@@ -1042,7 +1123,7 @@
 
                 <footer id="footer" class="main-content-wrap">
     <span class="copyrights">
-        Copyrights &copy; 2021 Soeun Shim. All Rights Reserved.
+        Copyrights &copy; 2022 Soeun Shim. All Rights Reserved.
     </span>
 </footer>
 
