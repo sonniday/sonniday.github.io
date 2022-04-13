@@ -206,6 +206,98 @@
                     
                         <a
                             class="link-unstyled"
+                            href="/2022/04/13/8/"
+                            aria-label=": [MySQL] Group by 시 그룹별 결과 문자열로 합치기 - GROUP_CONCAT"
+                        >
+                            [MySQL] Group by 시 그룹별 결과 문자열로 합치기 - GROUP_CONCAT
+                        </a>
+                    
+                </h1>
+                <div class="postShorten-meta">
+    <time datetime="2022-04-13T18:11:07+09:00">
+	
+		    Apr 13, 2022
+    	
+    </time>
+    
+        <span>in </span>
+        
+    <a class="category-link" href="/categories/MySQL/">MySQL</a>
+
+
+    
+</div>
+
+            </div>
+            
+                <div class="postShorten-content">
+                    <p>Group by 를 사용한 쿼리에서, 그룹 별로 어떤 값들이 묶여있는지 보고싶을 때가 있다. 이런 상황에서 유용하게 사용할 수 있는 함수가 <code>GROUP_CONCAT</code> 이다.</p>
+<hr>
+<h3 id="User-테이블"><a href="#User-테이블" class="headerlink" title="User 테이블"></a>User 테이블</h3><table>
+<thead>
+<tr>
+<th align="center">user_type</th>
+<th align="center">name</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="center">1</td>
+<td align="center">James</td>
+</tr>
+<tr>
+<td align="center">1</td>
+<td align="center">Henry</td>
+</tr>
+<tr>
+<td align="center">1</td>
+<td align="center">David</td>
+</tr>
+<tr>
+<td align="center">2</td>
+<td align="center">Julia</td>
+</tr>
+<tr>
+<td align="center">2</td>
+<td align="center">Emily</td>
+</tr>
+</tbody></table>
+<p><code>GROUP_CONCAT(column)</code> 으로 사용이 가능하고, Default 로는 <code>콤마(,)</code> 가 구분자가 되어 <code>user_type</code> 그룹별 <code>name</code> 묶음을 추출한다.</p>
+<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">SELECT</span> user_type,</span><br><span class="line">                GROUP_CONCAT(name)</span><br><span class="line"><span class="keyword">FROM</span> <span class="keyword">User</span></span><br><span class="line"><span class="keyword">GROUP</span> <span class="keyword">BY</span> user_type</span><br><span class="line"></span><br><span class="line"><span class="comment">-- 결과</span></span><br><span class="line">user_type    <span class="operator">|</span>    name</span><br><span class="line"><span class="number">1</span>                     <span class="operator">|</span>    James, Henry, David</span><br><span class="line"><span class="number">2</span>                     <span class="operator">|</span>    Julia, Emily</span><br></pre></td></tr></table></figure>
+<br/>
+
+<p><code>GROUP_CONCAT(column ORDER BY column ASC|DESC SEPARATOR &#39;구분자&#39; )</code> 와 같이 사용하여 구분자를 변경 하거나, <code>GROUP_CONCAT</code> 의 묶음 데이터의 Ordering 도 지정할 수 있다.</p>
+<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">SELECT</span> user_type,</span><br><span class="line">                GROUP_CONCAT(name <span class="keyword">order</span> <span class="keyword">by</span> name <span class="keyword">ASC</span> SEPARATOR <span class="string">&#x27;_&#x27;</span>)</span><br><span class="line"><span class="keyword">FROM</span> <span class="keyword">User</span></span><br><span class="line"><span class="keyword">GROUP</span> <span class="keyword">BY</span> user_type</span><br><span class="line"></span><br><span class="line"><span class="comment">-- 결과</span></span><br><span class="line">user_type    <span class="operator">|</span>    name</span><br><span class="line"><span class="number">1</span>                     <span class="operator">|</span>    David_Henry_James</span><br><span class="line"><span class="number">2</span>                     <span class="operator">|</span>    Emily_Julia</span><br></pre></td></tr></table></figure>
+                    
+                        
+
+
+                    
+                    
+                        <p>
+                            <a
+                                href="/2022/04/13/8/#post-footer"
+                                class="postShorten-excerpt_link link"
+                                aria-label=""
+                            >
+                                Comment and share
+                            </a>
+                        </p>
+                    
+                </div>
+            
+        </div>
+        
+    </article>
+    
+    
+    <article class="postShorten postShorten--thumbnailimg-bottom">
+        <div class="postShorten-wrap">
+            
+            <div class="postShorten-header">
+                <h1 class="postShorten-title">
+                    
+                        <a
+                            class="link-unstyled"
                             href="/2022/01/12/7/"
                             aria-label=": [Django] Queryset prefetch_related() 주의점 (feat. to_attr)"
                         >
