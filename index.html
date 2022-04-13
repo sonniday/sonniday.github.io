@@ -260,6 +260,8 @@
 <td align="center">Emily</td>
 </tr>
 </tbody></table>
+<br/>
+
 <p><code>GROUP_CONCAT(column)</code> 으로 사용이 가능하고, Default 로는 <code>콤마(,)</code> 가 구분자가 되어 <code>user_type</code> 그룹별 <code>name</code> 묶음을 추출한다.</p>
 <figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">SELECT</span> user_type,</span><br><span class="line">                GROUP_CONCAT(name)</span><br><span class="line"><span class="keyword">FROM</span> <span class="keyword">User</span></span><br><span class="line"><span class="keyword">GROUP</span> <span class="keyword">BY</span> user_type</span><br><span class="line"></span><br><span class="line"><span class="comment">-- 결과</span></span><br><span class="line">user_type    <span class="operator">|</span>    name</span><br><span class="line"><span class="number">1</span>                     <span class="operator">|</span>    James, Henry, David</span><br><span class="line"><span class="number">2</span>                     <span class="operator">|</span>    Julia, Emily</span><br></pre></td></tr></table></figure>
 <br/>
