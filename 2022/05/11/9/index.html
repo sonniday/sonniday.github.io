@@ -1,0 +1,712 @@
+
+<!DOCTYPE html>
+<html lang="en">
+    
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="generator" content="Everyday Sonni Day :)">
+    <title>[Database] 정규화와 반정규화의 성능 - Everyday Sonni Day :)</title>
+    <meta name="author" content="Soeun Shim">
+    
+    
+    
+    <script type="application/ld+json">{"@context":"http://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Soeun Shim","sameAs":[],"image":"soeun_profile.jpeg"},"articleBody":"성능 데이터 모델링과 정규화, 반정규화의 성능에 대해 알아보자.\n\n1. 성능 데이터 모델링의 개요1-1. 성능 데이터 모델링의 정의\n데이터베이스에서 기본적으로 설계단계에서부터 성능을 고려하지 않고 설계를 하는것은 빠르게 지나갈 수 없는 길을 지나가는 차에게 빨리 와달라고 요청하는 것과 다름없다.\n일반적으로 성능이라고 하면 데이터 조회의 성능을 의미하곤 한다.\n데이터 입력/수정/삭제는 일시적이고 빈번하지 않지만 데이터 조회의 경우 반복적이고 빈번하며 여러건을 처리하는 경우가 많기 때문이다.\n성능 데이터 모델링이란 데이터베이스 성능향상을 목적으로 설계단계의 데이터모델링 때부터 정규화,반정규화, 테이블통합, 테이블분할, 조인구조, PK, FK 등 여러가지 성능과 관련된 사항이 데이터 모델링에 반영될 수 있도록 하는 것이다.\n\n1-2. 성능 데이터 모델링 수행 시점\n프로젝트 수행 중에 있어서 사전에 할수록 비용이 들지 않는다. 분석/설계 단계에서 데이터 모델에 성능을 고려한 데이터 모델링을 수행할 경우 성능저하에 따른 재업무 비용을 최소화 할 수 있는 기회를 가지게 된다.\n\n\n2. 정규화와 성능2-1. 정규화를 통한 성능 향상 전략\n정규화란 ?\n\n기본적으로 데이터에 대한 중복을 제거하여 (같은 데이터는 DB 내에 하나만 놓으려고 함) 데이터가 관심사별로 처리되도록 하는 경우가 많기 때문에 성능이 향상되는 특징을 가진다.\n데이터 모델링을 할때 기본적으로 정규화가 완벽하게 수행되어 있어야한다.\n다만! SQL 문장에서 조인이 많이 발생하여 이로인한 성능저하가 나타나기 때문에 사례별로 유의하여 반정규화를 적용하는 전략이 필요하다.\n\n\n그러면 정규화를 수행하면 항상 성능이 저하되어 나타날까 ?\n\n정규화는 데이터의 중복속성을 제거하고 동일한 의미의 속성들이 하나의 테이블로 집약되므로 한 테이블의 데이터 용량이 최소화 되는 효과가 있다. 따라서 정규화된 테이블은 데이터 처리할 때 속도가 빨라질 수도 있고 느려질 수도 있는 특성이 있다.\n\n일반적으로 정규화가 잘 되어있으면 입력/수정/삭제의 성능이 향상되고, 반정규화를 많이하면 조회의 성능이 향상된다고 인식할 수 있으나!! 그런 고정관념을 탈피하자.\n\n정규화를 해야만 성능이 향상되는 경우가 아주 많기 때문이다.\n\n\n사례 보기\n\n\n\n사례 1\n\n\n‘관서등록일자가 2020년 이후 관서를 모두 조회하라’ 일 경우\n왼쪽 테이블(비정규화)은 불필요하게 납부자번호 만큼 누적된 데이터를 읽어서 결과를 보여주지만, 오른쪽 테이블(정규화)은 관서수 만큼만 존재하는 데이터를 읽어 곧바로 결과를 보여준다(PK Unique Index 이용하여 조인 성능저하 미미함).\n\n\n사례 2\n\n\n유형기능분류코드에 따라 데이터를 조회하는 경우가 많이 나타나 인덱스를 생성하려면\n왼쪽 테이블(비정규화) 의 경우 각각에 대해 인덱스를 생성해야 하므로 9개나 되는 인덱스를 추가해야하지만, 오른쪽 테이블(정규화) 의 경우 PK 인덱스(유형코드 + 기능분류코드+모델코드) 를 이용하기 때문에 추가로 생성하는 인덱스의 개수가 0개이다.\n한 테이블에 인덱스가 많아지면 조회성능은 향상되지만, 데이터 입력/수정/삭제 성능은 저하된다. 인덱스 수를 가급적 7~8개가 넘지 않도록 하는것이 좋다.\n\n\n\n\n\n\n\n\n3. 반정규화와 성능3-1. 반정규화를 통한 성능 향상 전략\n반정규화를 통한 성능향상 전략\n반정규화(역정규화) ?\n비정규화와 다르다!!! 비정규화는 아예 정규화를 수행하지 않은 모델을 지칭한다.\n반정규화(역정규화)는 정규화된 엔티티, 속성, 관계에 대해 시스템 성능향상과 단순화를 위해 중복, 통합, 분리 등을 수행하는 데이터 모델링 기법이다. → 이말은 일단 베이스는 정규화된 데이터모델이어야한다는 것\n\n\n데이터의 무결성이 깨질 수 있는 위험을 무릅쓰고도 반정규화를 적용하는 이유!?\n 데이터를 조회할 때 디스크 I/O량이 많아서 성능이 저하되거나, 경로가 너무 멀어 조인으로 인한 성능저하가 예상되거나, 컬럼을 계산하여 읽을 때 성능이 저하될 것이 예상되는 경우 반정규화를 수행한다.\n\n\n\n\n반정규화의 적용방법\n반정규화를 적용할 때는 기본적으로 데이터 무결성이 깨질 가능성이 많이 있기 때문에 반드시 데이터 무결성을 보장할 수 있는 방법을 다~ 고려해본 이후에 최후의 수단으로 반정규화를 적용해야 한다.\n정규화 ↔  반정규화 는 Trade-Off 관계이기 때문에, 정규화만을 강조하다보면 성능의 이슈가 발생될 수 있고 반정규화를 과도하게 적용하다 보면 데이터 무결성이 깨질 위험이 증가한다.\n\n\n반정규화의 절차\n반정규화의 대상을 조사한다.\n자주 사용되는 테이블에 접근하는 프로세스의 수가 많고 항상 일정한 범위만을 조회하는 경우인지\n테이블에 대량의 데이터가 있고 대량의 데이터 범위를 자주 처리하는 경우에 처리범위를 일정하게 줄이지 않으면 성능을 보장할수 없는 경우인지\n통계성 프로세스에 의해 통계 정보를 필요로 할 때 인지\n테이블에 지나치게 많은 조인이 걸려 데이터를 조회하는 작업이 기술적으로 어려운 경우인지\n\n\n반정규화의 대상에 대해 다른 방법으로 처리할 수 있는지 검토한다.\n지나치게 많은 조인이 걸려 데이터를 조회하는 작업이 기술적으로 어려울 경우 뷰(VIEW) 를 사용하면 이를 해결 할 수도 있다.\n성능이 저하되는 경우 인덱스를 조정함으로써 성능을 향상시킬 수 있다.\n어플리케이션 단에서 로직을 구사하는 방법을 변경하여 성능을 향상시킬 수 있다.\n대량의 데이터는 파티셔닝 기법을 적용하여 성능을 향상 시킬수 있다. 데이터가 특정 기준(파티셔닝 키)에 의해 다르게 저장되고 파티셔닝 키에 따른 조회가 될 때 성능이 좋아진다.\n\n\n\n\n반정규화를 적용한다.\n테이블과 속성, 관계에 대해 중복으로 가져가는 방법만이 반정규화는 아니고, 테이블, 속성, 관계를 추가할 수도 있고 분할할 수도 있으며 제거하는 방법도 반정규화다!\n반정규화의 기법\n테이블 반정규화\n테이블 병합\n1:1 관계 병합 : 1:1 관계를 통합하여 성능향상\n1:M 관계 병합 : 1:M 관계를 통합하여 성능향상\n슈퍼/서브타입 병합 : 슈퍼/서브 관계를 통합하여 성능향상\n\n\n테이블 분할\n수직분할 : 컬럼단위로 테이블을 1:1 로 분리하여 성능향상\n수평분할 : 로우단위로 테이블을 분리하여 성능향상\n\n\n테이블 추가\n중복테이블 추가 : 서버가 다른 경우 동일한 테이블 구조를 중복하여 원격조인을 제거하며 성능향상\n통계테이블 추가 : SUM, AVG 등을 미리 수행하여 계산해둠으로써 조회시 성능향상\n이력테이블 추가 : 이력테이블 중에서 마스터테이블에 존재하는 레코드를 중복하여 관리함으로써 최신데이터 조회시 성능향상하는 것도 반정규화 유형중 하나\n부분테이블 추가 : 자주이용하는 집중화된 컬럼들이 있을 때 해당 컬럼들을 모아놓은 별도의 테이블을 생성함으로써 성능향상\n\n\n\n\n컬럼 반정규화\n중복컬럼 추가 : 조인을 감소시키기 위해 중복된 컬럼을 위치시킴\n파생컬럼 추가 : 트랜잭션이 처리되는 시점에 계산에 의해 발생되는 성능저하를 예방하기 위해 미리 값을 계산하여 컬럼에 보관\n이력테이블 컬럼 추가 : 대량의 이력데이터를 처리할 때 불특정날조회나 최근값 조회할때 나타날 수 있는 성능저하를 예방하기위해 기능성컬럼(최근값여부, 시작 및 종료일자 등)을 추가함\nPK에 의한 컬럼 추가 : 복합의미를 갖는 PK를 단일 속성으로 구성하였을 경우 발생됨. 단일 PK안에서 특정 값을 별도로 조회하는 경우 성능저하가 발생할 수 있음. 이미 PK 안에 데이터가 존재하지만 성능향상을 위해 일반속성으로 포함하는 방법. \n응용시스템 오작동을 위한 컬럼 추가 : 사용자가 데이터처리를 하다가 잘못 처리하여 원래값으로 복구하기를 원하는 경우 이전 데이터를 임시적으로 중복하여 보관하는 기법 (컬럼으로 이것을 보관하는 법은 임시적인 기법이지만, 이것을 이력데이터 모델로 풀어낸다면 정상적인 데이터 모델 기법이 됨)\n\n\n관계 반정규화\n중복관계 추가 : 데이터를 처리하기 위한 여러 경로를 거쳐 조인이 가능하지만 이 때 발생할 수 있는 성능저하를 예방하기 위해 추가적인 관계를 맺는 방법\n테이블과 컬럼의 반정규화는 데이터 무결성에 영향을 미치게 되지만 관계의 반정규화는 데이터 무결성을 깨뜨릴 위험을 갖지 않고서도 데이터처리의 성능을 향상시킬 수 있는 반정규화의 기법이 된다.\n\n\n\n\n\n\n\n\n오늘의 결론!현재 자신이 속해있는 업무환경의 DB 구조를 대입해가면서 사례를 생각해보고, 적용해 보자.\n\n\nReference서적 : SQL 전문가 가이드\n\n","dateCreated":"2022-05-11T15:18:52+09:00","dateModified":"2022-05-11T16:03:56+09:00","datePublished":"2022-05-11T15:18:52+09:00","description":"","headline":"[Database] 정규화와 반정규화의 성능","image":[],"mainEntityOfPage":{"@type":"WebPage","@id":"https://sonniday.github.io/2022/05/11/9/"},"publisher":{"@type":"Organization","name":"Soeun Shim","sameAs":[],"image":"soeun_profile.jpeg","logo":{"@type":"ImageObject","url":"soeun_profile.jpeg"}},"url":"https://sonniday.github.io/2022/05/11/9/","keywords":"Database"}</script>
+    <meta name="description" content="성능 데이터 모델링과 정규화, 반정규화의 성능에 대해 알아보자.  1. 성능 데이터 모델링의 개요1-1. 성능 데이터 모델링의 정의 데이터베이스에서 기본적으로 설계단계에서부터 성능을 고려하지 않고 설계를 하는것은 빠르게 지나갈 수 없는 길을 지나가는 차에게 빨리 와달라고 요청하는 것과 다름없다. 일반적으로 성능이라고 하면 데이터 조회의 성능을 의미하곤 한다">
+<meta property="og:type" content="blog">
+<meta property="og:title" content="[Database] 정규화와 반정규화의 성능">
+<meta property="og:url" content="https://sonniday.github.io/2022/05/11/9/index.html">
+<meta property="og:site_name" content="Everyday Sonni Day :)">
+<meta property="og:description" content="성능 데이터 모델링과 정규화, 반정규화의 성능에 대해 알아보자.  1. 성능 데이터 모델링의 개요1-1. 성능 데이터 모델링의 정의 데이터베이스에서 기본적으로 설계단계에서부터 성능을 고려하지 않고 설계를 하는것은 빠르게 지나갈 수 없는 길을 지나가는 차에게 빨리 와달라고 요청하는 것과 다름없다. 일반적으로 성능이라고 하면 데이터 조회의 성능을 의미하곤 한다">
+<meta property="og:locale" content="en_US">
+<meta property="og:image" content="https://sonniday.github.io/img/9-1.JPG">
+<meta property="og:image" content="https://sonniday.github.io/img/9-2.JPG">
+<meta property="article:published_time" content="2022-05-11T06:18:52.000Z">
+<meta property="article:modified_time" content="2022-05-11T07:03:56.437Z">
+<meta property="article:author" content="Soeun Shim">
+<meta property="article:tag" content="Database">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://sonniday.github.io/img/9-1.JPG">
+    
+    
+        
+    
+    
+        <meta property="og:image" content="https://sonniday.github.io/assets/images/soeun_profile.jpeg"/>
+    
+    
+    
+    
+    <!--STYLES-->
+    
+<link rel="stylesheet" href="/assets/css/all.css">
+
+    
+<link rel="stylesheet" href="/assets/css/jquery.fancybox.css">
+
+    
+<link rel="stylesheet" href="/assets/css/thumbs.css">
+
+    
+<link rel="stylesheet" href="/assets/css/tranquilpeak.css">
+
+    <!--STYLES END-->
+    
+
+    
+
+    
+        
+    
+</head>
+
+    <body>
+        <div id="blog">
+            <!-- Define author's picture -->
+
+
+    
+        
+            
+        
+    
+
+<header id="header" data-behavior="4">
+    <i id="btn-open-sidebar" class="fa fa-lg fa-bars"></i>
+    <div class="header-title">
+        <a
+            class="header-title-link"
+            href="/"
+            aria-label=""
+        >
+            Everyday Sonni Day :)
+        </a>
+    </div>
+    
+        
+            <a
+                class="header-right-picture "
+                href="#about"
+                aria-label="Open the link: /#about"
+            >
+        
+        
+            <img class="header-picture" src="/assets/images/soeun_profile.jpeg" alt="Author&#39;s picture"/>
+        
+        </a>
+    
+</header>
+
+            <!-- Define author's picture -->
+
+
+
+        
+    
+
+<nav id="sidebar" data-behavior="4">
+    <div class="sidebar-container">
+        
+            <div class="sidebar-profile">
+                <a
+                    href="/#about"
+                    aria-label="Read more about the author"
+                >
+                    <img class="sidebar-profile-picture" src="/assets/images/soeun_profile.jpeg" alt="Author&#39;s picture"/>
+                </a>
+                <h4 class="sidebar-profile-name">Soeun Shim</h4>
+                
+                    <h5 class="sidebar-profile-bio"><p>My Tech Diary</p>
+</h5>
+                
+            </div>
+        
+        
+            <ul class="sidebar-buttons">
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="/"
+                            
+                            rel="noopener"
+                            title="Home"
+                        >
+                        <i class="sidebar-button-icon fa fa-home" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Home</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="/all-categories"
+                            
+                            rel="noopener"
+                            title="Categories"
+                        >
+                        <i class="sidebar-button-icon fa fa-bookmark" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Categories</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="/all-tags"
+                            
+                            rel="noopener"
+                            title="Tags"
+                        >
+                        <i class="sidebar-button-icon fa fa-tags" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Tags</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="/all-archives"
+                            
+                            rel="noopener"
+                            title="Archives"
+                        >
+                        <i class="sidebar-button-icon fa fa-archive" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Archives</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="#about"
+                            
+                            rel="noopener"
+                            title="About"
+                        >
+                        <i class="sidebar-button-icon fa fa-question" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">About</span>
+                    </a>
+            </li>
+            
+        </ul>
+        
+    </div>
+</nav>
+
+            
+            <div id="main" data-behavior="4"
+                 class="
+                        hasCoverMetaIn
+                        ">
+                
+<article class="post">
+    
+    
+        <div class="post-header main-content-wrap text-left">
+    
+        <h1 class="post-title">
+            [Database] 정규화와 반정규화의 성능
+        </h1>
+    
+    
+        <div class="post-meta">
+    <time datetime="2022-05-11T15:18:52+09:00">
+	
+		    May 11, 2022
+    	
+    </time>
+    
+        <span>in </span>
+        
+    <a class="category-link" href="/categories/Database/">Database</a>
+
+
+    
+</div>
+
+    
+</div>
+
+    
+    <div class="post-content markdown">
+        <div class="main-content-wrap">
+            <p>성능 데이터 모델링과 정규화, 반정규화의 성능에 대해 알아보자.</p>
+<hr>
+<h3 id="1-성능-데이터-모델링의-개요"><a href="#1-성능-데이터-모델링의-개요" class="headerlink" title="1. 성능 데이터 모델링의 개요"></a>1. 성능 데이터 모델링의 개요</h3><h5 id="1-1-성능-데이터-모델링의-정의"><a href="#1-1-성능-데이터-모델링의-정의" class="headerlink" title="1-1. 성능 데이터 모델링의 정의"></a>1-1. 성능 데이터 모델링의 정의</h5><ol>
+<li>데이터베이스에서 기본적으로 설계단계에서부터 성능을 고려하지 않고 설계를 하는것은 빠르게 지나갈 수 없는 길을 지나가는 차에게 빨리 와달라고 요청하는 것과 다름없다.</li>
+<li>일반적으로 성능이라고 하면 데이터 조회의 성능을 의미하곤 한다.</li>
+<li>데이터 입력/수정/삭제는 일시적이고 빈번하지 않지만 데이터 조회의 경우 반복적이고 빈번하며 여러건을 처리하는 경우가 많기 때문이다.</li>
+<li>성능 데이터 모델링이란 데이터베이스 성능향상을 목적으로 설계단계의 데이터모델링 때부터 정규화,반정규화, 테이블통합, 테이블분할, 조인구조, PK, FK 등 여러가지 성능과 관련된 사항이 데이터 모델링에 반영될 수 있도록 하는 것이다.</li>
+</ol>
+<h5 id="1-2-성능-데이터-모델링-수행-시점"><a href="#1-2-성능-데이터-모델링-수행-시점" class="headerlink" title="1-2. 성능 데이터 모델링 수행 시점"></a>1-2. 성능 데이터 모델링 수행 시점</h5><ol>
+<li>프로젝트 수행 중에 있어서 사전에 할수록 비용이 들지 않는다. 분석/설계 단계에서 데이터 모델에 성능을 고려한 데이터 모델링을 수행할 경우 성능저하에 따른 재업무 비용을 최소화 할 수 있는 기회를 가지게 된다.</li>
+</ol>
+<hr>
+<h3 id="2-정규화와-성능"><a href="#2-정규화와-성능" class="headerlink" title="2. 정규화와 성능"></a>2. 정규화와 성능</h3><h5 id="2-1-정규화를-통한-성능-향상-전략"><a href="#2-1-정규화를-통한-성능-향상-전략" class="headerlink" title="2-1. 정규화를 통한 성능 향상 전략"></a>2-1. 정규화를 통한 성능 향상 전략</h5><ol>
+<li><p><strong>정규화란 ?</strong></p>
+<ul>
+<li>기본적으로 데이터에 대한 중복을 제거하여 (같은 데이터는 DB 내에 하나만 놓으려고 함) 데이터가 관심사별로 처리되도록 하는 경우가 많기 때문에 성능이 향상되는 특징을 가진다.</li>
+<li>데이터 모델링을 할때 기본적으로 정규화가 완벽하게 수행되어 있어야한다.</li>
+<li>다만! SQL 문장에서 조인이 많이 발생하여 이로인한 성능저하가 나타나기 때문에 사례별로 유의하여 반정규화를 적용하는 전략이 필요하다.</li>
+</ul>
+</li>
+<li><p><strong>그러면 정규화를 수행하면 항상 성능이 저하되어 나타날까 ?</strong></p>
+<ul>
+<li><p>정규화는 데이터의 중복속성을 제거하고 동일한 의미의 속성들이 하나의 테이블로 집약되므로 한 테이블의 데이터 용량이 최소화 되는 효과가 있다. 따라서 정규화된 테이블은 데이터 처리할 때 속도가 빨라질 수도 있고 느려질 수도 있는 특성이 있다.</p>
+</li>
+<li><p>일반적으로 정규화가 잘 되어있으면 입력/수정/삭제의 성능이 향상되고, 반정규화를 많이하면 조회의 성능이 향상된다고 인식할 수 있으나!! 그런 고정관념을 탈피하자.</p>
+</li>
+<li><p>정규화를 해야만 성능이 향상되는 경우가 아주 많기 때문이다.</p>
+<details>
+<summary>
+사례 보기
+</summary>
+
+<ol>
+<li>사례 1<br><img src="/img/9-1.JPG" alt="1번 사례"></li>
+</ol>
+<ul>
+<li>‘관서등록일자가 2020년 이후 관서를 모두 조회하라’ 일 경우</li>
+<li>왼쪽 테이블(비정규화)은 불필요하게 납부자번호 만큼 누적된 데이터를 읽어서 결과를 보여주지만, 오른쪽 테이블(정규화)은 관서수 만큼만 존재하는 데이터를 읽어 곧바로 결과를 보여준다(PK Unique Index 이용하여 조인 성능저하 미미함).</li>
+</ul>
+<ol start="2">
+<li>사례 2<br><img src="/img/9-2.JPG" alt="2번 사례"></li>
+</ol>
+<ul>
+<li>유형기능분류코드에 따라 데이터를 조회하는 경우가 많이 나타나 인덱스를 생성하려면</li>
+<li>왼쪽 테이블(비정규화) 의 경우 각각에 대해 인덱스를 생성해야 하므로 9개나 되는 인덱스를 추가해야하지만, 오른쪽 테이블(정규화) 의 경우 PK 인덱스(유형코드 + 기능분류코드+모델코드) 를 이용하기 때문에 추가로 생성하는 인덱스의 개수가 0개이다.</li>
+<li>한 테이블에 인덱스가 많아지면 조회성능은 향상되지만, 데이터 입력/수정/삭제 성능은 저하된다. 인덱스 수를 가급적 7~8개가 넘지 않도록 하는것이 좋다.</details>
+
+</li>
+</ul>
+</li>
+</ul>
+</li>
+</ol>
+<hr>
+<h3 id="3-반정규화와-성능"><a href="#3-반정규화와-성능" class="headerlink" title="3. 반정규화와 성능"></a>3. 반정규화와 성능</h3><h5 id="3-1-반정규화를-통한-성능-향상-전략"><a href="#3-1-반정규화를-통한-성능-향상-전략" class="headerlink" title="3-1. 반정규화를 통한 성능 향상 전략"></a>3-1. 반정규화를 통한 성능 향상 전략</h5><ol>
+<li><strong>반정규화를 통한 성능향상 전략</strong><ol>
+<li><strong>반정규화(역정규화) ?</strong><ol>
+<li>비정규화와 다르다!!! 비정규화는 아예 정규화를 수행하지 않은 모델을 지칭한다.</li>
+<li>반정규화(역정규화)는 정규화된 엔티티, 속성, 관계에 대해 시스템 성능향상과 단순화를 위해 중복, 통합, 분리 등을 수행하는 데이터 모델링 기법이다. → 이말은 일단 베이스는 정규화된 데이터모델이어야한다는 것</li>
+</ol>
+</li>
+<li><strong>데이터의 무결성이 깨질 수 있는 위험을 무릅쓰고도 반정규화를 적용하는 이유!?</strong><ol>
+<li> 데이터를 조회할 때 디스크 I/O량이 많아서 성능이 저하되거나, 경로가 너무 멀어 조인으로 인한 성능저하가 예상되거나, 컬럼을 계산하여 읽을 때 성능이 저하될 것이 예상되는 경우 반정규화를 수행한다.</li>
+</ol>
+</li>
+</ol>
+</li>
+<li><strong>반정규화의 적용방법</strong><ol>
+<li>반정규화를 적용할 때는 기본적으로 데이터 무결성이 깨질 가능성이 많이 있기 때문에 반드시 데이터 무결성을 보장할 수 있는 방법을 다~ 고려해본 이후에 최후의 수단으로 반정규화를 적용해야 한다.</li>
+<li>정규화 ↔  반정규화 는 Trade-Off 관계이기 때문에, 정규화만을 강조하다보면 성능의 이슈가 발생될 수 있고 반정규화를 과도하게 적용하다 보면 데이터 무결성이 깨질 위험이 증가한다.</li>
+</ol>
+</li>
+<li><strong>반정규화의 절차</strong><ol>
+<li><strong>반정규화의 대상을 조사한다.</strong><ol>
+<li>자주 사용되는 테이블에 접근하는 프로세스의 수가 많고 항상 일정한 범위만을 조회하는 경우인지</li>
+<li>테이블에 대량의 데이터가 있고 대량의 데이터 범위를 자주 처리하는 경우에 처리범위를 일정하게 줄이지 않으면 성능을 보장할수 없는 경우인지</li>
+<li>통계성 프로세스에 의해 통계 정보를 필요로 할 때 인지</li>
+<li>테이블에 지나치게 많은 조인이 걸려 데이터를 조회하는 작업이 기술적으로 어려운 경우인지</li>
+</ol>
+</li>
+<li><strong>반정규화의 대상에 대해 다른 방법으로 처리할 수 있는지 검토한다.</strong><ol>
+<li>지나치게 많은 조인이 걸려 데이터를 조회하는 작업이 기술적으로 어려울 경우 뷰(VIEW) 를 사용하면 이를 해결 할 수도 있다.</li>
+<li>성능이 저하되는 경우 인덱스를 조정함으로써 성능을 향상시킬 수 있다.</li>
+<li>어플리케이션 단에서 로직을 구사하는 방법을 변경하여 성능을 향상시킬 수 있다.</li>
+<li>대량의 데이터는 파티셔닝 기법을 적용하여 성능을 향상 시킬수 있다. 데이터가 특정 기준(파티셔닝 키)에 의해 다르게 저장되고 파티셔닝 키에 따른 조회가 될 때 성능이 좋아진다.</li>
+</ol>
+</li>
+</ol>
+</li>
+<li><strong>반정규화를 적용한다.</strong><ol>
+<li>테이블과 속성, 관계에 대해 중복으로 가져가는 방법만이 반정규화는 아니고, 테이블, 속성, 관계를 추가할 수도 있고 분할할 수도 있으며 제거하는 방법도 반정규화다!</li>
+<li><strong>반정규화의 기법</strong><ol>
+<li><strong>테이블 반정규화</strong><ol>
+<li>테이블 병합<ol>
+<li>1:1 관계 병합 : 1:1 관계를 통합하여 성능향상</li>
+<li>1:M 관계 병합 : 1:M 관계를 통합하여 성능향상</li>
+<li>슈퍼/서브타입 병합 : 슈퍼/서브 관계를 통합하여 성능향상</li>
+</ol>
+</li>
+<li>테이블 분할<ol>
+<li>수직분할 : 컬럼단위로 테이블을 1:1 로 분리하여 성능향상</li>
+<li>수평분할 : 로우단위로 테이블을 분리하여 성능향상</li>
+</ol>
+</li>
+<li>테이블 추가<ol>
+<li>중복테이블 추가 : 서버가 다른 경우 동일한 테이블 구조를 중복하여 원격조인을 제거하며 성능향상</li>
+<li>통계테이블 추가 : SUM, AVG 등을 미리 수행하여 계산해둠으로써 조회시 성능향상</li>
+<li>이력테이블 추가 : 이력테이블 중에서 마스터테이블에 존재하는 레코드를 중복하여 관리함으로써 최신데이터 조회시 성능향상하는 것도 반정규화 유형중 하나</li>
+<li>부분테이블 추가 : 자주이용하는 집중화된 컬럼들이 있을 때 해당 컬럼들을 모아놓은 별도의 테이블을 생성함으로써 성능향상</li>
+</ol>
+</li>
+</ol>
+</li>
+<li><strong>컬럼 반정규화</strong><ol>
+<li>중복컬럼 추가 : 조인을 감소시키기 위해 중복된 컬럼을 위치시킴</li>
+<li>파생컬럼 추가 : 트랜잭션이 처리되는 시점에 계산에 의해 발생되는 성능저하를 예방하기 위해 미리 값을 계산하여 컬럼에 보관</li>
+<li>이력테이블 컬럼 추가 : 대량의 이력데이터를 처리할 때 불특정날조회나 최근값 조회할때 나타날 수 있는 성능저하를 예방하기위해 기능성컬럼(최근값여부, 시작 및 종료일자 등)을 추가함</li>
+<li>PK에 의한 컬럼 추가 : 복합의미를 갖는 PK를 단일 속성으로 구성하였을 경우 발생됨. 단일 PK안에서 특정 값을 별도로 조회하는 경우 성능저하가 발생할 수 있음. 이미 PK 안에 데이터가 존재하지만 성능향상을 위해 일반속성으로 포함하는 방법. </li>
+<li>응용시스템 오작동을 위한 컬럼 추가 : 사용자가 데이터처리를 하다가 잘못 처리하여 원래값으로 복구하기를 원하는 경우 이전 데이터를 임시적으로 중복하여 보관하는 기법 (컬럼으로 이것을 보관하는 법은 임시적인 기법이지만, 이것을 이력데이터 모델로 풀어낸다면 정상적인 데이터 모델 기법이 됨)</li>
+</ol>
+</li>
+<li><strong>관계 반정규화</strong><ol>
+<li>중복관계 추가 : 데이터를 처리하기 위한 여러 경로를 거쳐 조인이 가능하지만 이 때 발생할 수 있는 성능저하를 예방하기 위해 추가적인 관계를 맺는 방법</li>
+<li>테이블과 컬럼의 반정규화는 데이터 무결성에 영향을 미치게 되지만 관계의 반정규화는 데이터 무결성을 깨뜨릴 위험을 갖지 않고서도 데이터처리의 성능을 향상시킬 수 있는 반정규화의 기법이 된다.</li>
+</ol>
+</li>
+</ol>
+</li>
+</ol>
+</li>
+</ol>
+<hr>
+<h4 id="오늘의-결론"><a href="#오늘의-결론" class="headerlink" title="오늘의 결론!"></a>오늘의 결론!</h4><p>현재 자신이 속해있는 업무환경의 DB 구조를 대입해가면서 사례를 생각해보고, 적용해 보자.</p>
+<hr>
+<blockquote>
+<p>Reference<br>서적 : SQL 전문가 가이드</p>
+</blockquote>
+
+            
+
+
+        </div>
+    </div>
+    <div id="post-footer" class="post-footer main-content-wrap">
+        
+            <div class="post-footer-tags">
+                <span class="text-color-light text-small">TAGGED IN</span><br/>
+                
+    <a class="tag tag--primary tag--small t-none-link" href="/tags/Database/" rel="tag">Database</a>
+
+            </div>
+        
+        
+            <div class="post-actions-wrap">
+    <nav>
+        <ul class="post-actions post-action-nav">
+            <li class="post-action">
+                
+                    <a
+                        class="post-action-btn btn btn--disabled"
+                        aria-hidden="true"
+                    >
+                        
+                        <i class="fa fa-angle-left" aria-hidden="true"></i>
+                        <span class="hide-xs hide-sm text-small icon-ml">PREVIOUS</span>
+                    </a>
+            </li>
+            <li class="post-action">
+                
+                    
+                <a
+                    class="post-action-btn btn btn--default tooltip--top"
+                    href="/2022/04/13/8/"
+                    data-tooltip="[MySQL] Group by 시 그룹별 결과 문자열로 합치기 - GROUP_CONCAT"
+                    aria-label="NEXT: [MySQL] Group by 시 그룹별 결과 문자열로 합치기 - GROUP_CONCAT"
+                >
+                    
+                        <span class="hide-xs hide-sm text-small icon-mr">NEXT</span>
+                        <i class="fa fa-angle-right" aria-hidden="true"></i>
+                    </a>
+            </li>
+        </ul>
+    </nav>
+    <ul class="post-actions post-action-share">
+        <li class="post-action hide-lg hide-md hide-sm">
+            <a
+                class="post-action-btn btn btn--default btn-open-shareoptions"
+                href="#btn-open-shareoptions"
+                aria-label="Share this post"
+            >
+                <i class="fa fa-share-alt" aria-hidden="true"></i>
+            </a>
+        </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="https://www.facebook.com/sharer/sharer.php?u=https://sonniday.github.io/2022/05/11/9/"
+                    title="Share on Facebook"
+                    aria-label="Share on Facebook"
+                >
+                    <i class="fab fa-facebook" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="https://twitter.com/intent/tweet?text=https://sonniday.github.io/2022/05/11/9/"
+                    title="Share on Twitter"
+                    aria-label="Share on Twitter"
+                >
+                    <i class="fab fa-twitter" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="https://plus.google.com/share?url=https://sonniday.github.io/2022/05/11/9/"
+                    title="Share on Google+"
+                    aria-label="Share on Google+"
+                >
+                    <i class="fab fa-google-plus" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+        
+            
+        
+        <li class="post-action">
+            
+                <a class="post-action-btn btn btn--default" href="#" aria-label="Back to top">
+            
+                <i class="fa fa-list" aria-hidden="true"></i>
+            </a>
+        </li>
+    </ul>
+</div>
+
+
+        
+        
+            
+        
+    </div>
+</article>
+
+
+
+                <footer id="footer" class="main-content-wrap">
+    <span class="copyrights">
+        Copyrights &copy; 2022 Soeun Shim. All Rights Reserved.
+    </span>
+</footer>
+
+            </div>
+            
+                <div id="bottom-bar" class="post-bottom-bar" data-behavior="4">
+                    <div class="post-actions-wrap">
+    <nav>
+        <ul class="post-actions post-action-nav">
+            <li class="post-action">
+                
+                    <a
+                        class="post-action-btn btn btn--disabled"
+                        aria-hidden="true"
+                    >
+                        
+                        <i class="fa fa-angle-left" aria-hidden="true"></i>
+                        <span class="hide-xs hide-sm text-small icon-ml">PREVIOUS</span>
+                    </a>
+            </li>
+            <li class="post-action">
+                
+                    
+                <a
+                    class="post-action-btn btn btn--default tooltip--top"
+                    href="/2022/04/13/8/"
+                    data-tooltip="[MySQL] Group by 시 그룹별 결과 문자열로 합치기 - GROUP_CONCAT"
+                    aria-label="NEXT: [MySQL] Group by 시 그룹별 결과 문자열로 합치기 - GROUP_CONCAT"
+                >
+                    
+                        <span class="hide-xs hide-sm text-small icon-mr">NEXT</span>
+                        <i class="fa fa-angle-right" aria-hidden="true"></i>
+                    </a>
+            </li>
+        </ul>
+    </nav>
+    <ul class="post-actions post-action-share">
+        <li class="post-action hide-lg hide-md hide-sm">
+            <a
+                class="post-action-btn btn btn--default btn-open-shareoptions"
+                href="#btn-open-shareoptions"
+                aria-label="Share this post"
+            >
+                <i class="fa fa-share-alt" aria-hidden="true"></i>
+            </a>
+        </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="https://www.facebook.com/sharer/sharer.php?u=https://sonniday.github.io/2022/05/11/9/"
+                    title="Share on Facebook"
+                    aria-label="Share on Facebook"
+                >
+                    <i class="fab fa-facebook" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="https://twitter.com/intent/tweet?text=https://sonniday.github.io/2022/05/11/9/"
+                    title="Share on Twitter"
+                    aria-label="Share on Twitter"
+                >
+                    <i class="fab fa-twitter" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="https://plus.google.com/share?url=https://sonniday.github.io/2022/05/11/9/"
+                    title="Share on Google+"
+                    aria-label="Share on Google+"
+                >
+                    <i class="fab fa-google-plus" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+        
+            
+        
+        <li class="post-action">
+            
+                <a class="post-action-btn btn btn--default" href="#" aria-label="Back to top">
+            
+                <i class="fa fa-list" aria-hidden="true"></i>
+            </a>
+        </li>
+    </ul>
+</div>
+
+
+                </div>
+                
+    <div id="share-options-bar" class="share-options-bar" data-behavior="4">
+        <i id="btn-close-shareoptions" class="fa fa-times"></i>
+        <ul class="share-options">
+            
+                
+                
+                <li class="share-option">
+                    <a
+                        class="share-option-btn"
+                        target="new"
+                        href="https://www.facebook.com/sharer/sharer.php?u=https://sonniday.github.io/2022/05/11/9/"
+                        aria-label="Share on Facebook"
+                    >
+                        <i class="fab fa-facebook" aria-hidden="true"></i><span>Share on Facebook</span>
+                    </a>
+                </li>
+            
+                
+                
+                <li class="share-option">
+                    <a
+                        class="share-option-btn"
+                        target="new"
+                        href="https://twitter.com/intent/tweet?text=https://sonniday.github.io/2022/05/11/9/"
+                        aria-label="Share on Twitter"
+                    >
+                        <i class="fab fa-twitter" aria-hidden="true"></i><span>Share on Twitter</span>
+                    </a>
+                </li>
+            
+                
+                
+                <li class="share-option">
+                    <a
+                        class="share-option-btn"
+                        target="new"
+                        href="https://plus.google.com/share?url=https://sonniday.github.io/2022/05/11/9/"
+                        aria-label="Share on Google+"
+                    >
+                        <i class="fab fa-google-plus" aria-hidden="true"></i><span>Share on Google+</span>
+                    </a>
+                </li>
+            
+        </ul>
+    </div>
+
+
+            
+        </div>
+        
+
+
+    
+        
+    
+
+<div id="about">
+    <div id="about-card">
+        <div id="about-btn-close">
+            <i class="fa fa-times"></i>
+        </div>
+        
+            <img id="about-card-picture" src="/assets/images/soeun_profile.jpeg" alt="Author&#39;s picture"/>
+        
+            <h4 id="about-card-name">Soeun Shim</h4>
+        
+            <div id="about-card-bio"><p>My Tech Diary</p>
+</div>
+        
+        
+            <div id="about-card-job">
+                <i class="fa fa-briefcase"></i>
+                <br/>
+                <p>Software Engineer</p>
+
+            </div>
+        
+        
+            <div id="about-card-location">
+                <i class="fa fa-map-marker-alt"></i>
+                <br/>
+                South Korea / Seoul
+            </div>
+        
+    </div>
+</div>
+
+        
+        
+<div id="cover" style="background-image:url('/assets/images/cover.jpg');"></div>
+        <!--SCRIPTS-->
+
+<script src="/assets/js/jquery.js"></script>
+
+
+<script src="/assets/js/jquery.fancybox.js"></script>
+
+
+<script src="/assets/js/thumbs.js"></script>
+
+
+<script src="/assets/js/tranquilpeak.js"></script>
+
+<!--SCRIPTS END-->
+
+
+    
+
+
+
+
+    </body>
+</html>
